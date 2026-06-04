@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "yahoo-finance": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["./dist/cli.js"],
+      "env": {
+        "YAHOO_FINANCE_DEBUG": ""
+      }
+    }
+  }
+}
