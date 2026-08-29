@@ -26,7 +26,7 @@ const MAP: Record<HolderType, { module: string; pick: (m: Record<string, unknown
 
 export const registerHolderTools = (server: McpServer, client: YahooClient): void => {
   server.registerTool(
-    "get_holder_info",
+    "yahoo_get_holder_info",
     {
       description:
         "Get ownership / holder information for a ticker. holder_type selects between major " +

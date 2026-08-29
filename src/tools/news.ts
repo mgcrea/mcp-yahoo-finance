@@ -16,7 +16,7 @@ type NewsItem = {
 
 export const registerNewsTools = (server: McpServer, client: YahooClient): void => {
   server.registerTool(
-    "get_yahoo_finance_news",
+    "yahoo_get_yahoo_finance_news",
     {
       description:
         "Get recent Yahoo Finance news articles for a ticker, as an array of " +

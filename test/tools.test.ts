@@ -38,20 +38,20 @@ describe("registerTools", () => {
     const { server, tools } = fakeServer();
     registerTools(server as never, makeClient());
     expect([...tools.keys()].toSorted()).toEqual([
-      "get_financial_statement",
-      "get_historical_stock_prices",
-      "get_holder_info",
-      "get_option_chain",
-      "get_option_expiration_dates",
-      "get_recommendations",
-      "get_stock_actions",
-      "get_stock_info",
-      "get_yahoo_finance_news",
+      "yahoo_get_financial_statement",
+      "yahoo_get_historical_stock_prices",
+      "yahoo_get_holder_info",
+      "yahoo_get_option_chain",
+      "yahoo_get_option_expiration_dates",
+      "yahoo_get_recommendations",
+      "yahoo_get_stock_actions",
+      "yahoo_get_stock_info",
+      "yahoo_get_yahoo_finance_news",
     ]);
   });
 });
 
-describe("get_historical_stock_prices handler", () => {
+describe("yahoo_get_historical_stock_prices handler", () => {
   it("calls chart with a derived range and flattens OHLCV rows", async () => {
     const chart = vi.fn().mockResolvedValue({
       timestamp: [1_700_000_000],
@@ -63,7 +63,7 @@ describe("get_historical_stock_prices handler", () => {
     const { server, tools } = fakeServer();
     registerTools(server as never, makeClient({ chart }));
 
-    const result = await tools.get("get_historical_stock_prices")!({
+    const result = await tools.get("yahoo_get_historical_stock_prices")!({
       ticker: "AAPL",
       period: "5d",
       interval: "1d",
@@ -92,7 +92,7 @@ describe("get_historical_stock_prices handler", () => {
   });
 });
 
-describe("get_recommendations handler", () => {
+describe("yahoo_get_recommendations handler", () => {
   it("dedupes upgrades/downgrades to the latest entry per firm", async () => {
     const quoteSummary = vi.fn().mockResolvedValue({
       upgradeDowngradeHistory: {
@@ -106,7 +106,7 @@ describe("get_recommendations handler", () => {
     const { server, tools } = fakeServer();
     registerTools(server as never, makeClient({ quoteSummary }));
 
-    const result = await tools.get("get_recommendations")!({
+    const result = await tools.get("yahoo_get_recommendations")!({
       ticker: "AAPL",
       recommendation_type: "upgrades_downgrades",
       months_back: 600,
@@ -129,7 +129,7 @@ describe("error handling", () => {
       makeClient({ quote, quoteSummary: vi.fn().mockResolvedValue({}) }),
     );
 
-    const result = await tools.get("get_stock_info")!({ ticker: "NOPE" });
+    const result = await tools.get("yahoo_get_stock_info")!({ ticker: "NOPE" });
     const { data, isError } = parse(result);
     expect(isError).toBe(true);
     expect((data as { error: string }).error).toMatch(/not found/i);

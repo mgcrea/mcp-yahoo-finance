@@ -20,7 +20,7 @@ const INFO_MODULES = [
 
 export const registerInfoTools = (server: McpServer, client: YahooClient): void => {
   server.registerTool(
-    "get_stock_info",
+    "yahoo_get_stock_info",
     {
       description:
         "Get comprehensive information for a ticker: current price & trading data, company " +

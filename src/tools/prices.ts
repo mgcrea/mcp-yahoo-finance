@@ -27,7 +27,7 @@ const toOhlcvRows = (chart: ChartResult): Record<string, unknown>[] => {
 
 export const registerPriceTools = (server: McpServer, client: YahooClient): void => {
   server.registerTool(
-    "get_historical_stock_prices",
+    "yahoo_get_historical_stock_prices",
     {
       description:
         "Get historical OHLCV stock prices for a ticker as an array of " +
@@ -49,7 +49,7 @@ export const registerPriceTools = (server: McpServer, client: YahooClient): void
   );
 
   server.registerTool(
-    "get_stock_actions",
+    "yahoo_get_stock_actions",
     {
       description:
         "Get dividend and stock-split history for a ticker, as " +

@@ -61,7 +61,7 @@ const MAP: Record<
 
 export const registerFinancialTools = (server: McpServer, client: YahooClient): void => {
   server.registerTool(
-    "get_financial_statement",
+    "yahoo_get_financial_statement",
     {
       description:
         "Get a financial statement for a ticker as an array of period objects (each with a " +

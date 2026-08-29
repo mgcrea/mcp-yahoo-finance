@@ -1,6 +1,7 @@
 {
   "name": "@mgcrea/mcp-yahoo-finance",
   "version": "0.1.0",
+  "private": true,
   "description": "Model Context Protocol server for Yahoo Finance market data",
   "keywords": [
     "finance",
@@ -44,20 +45,20 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "tough-cookie": "^5.1.2",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/node": "^24.12.4",
-    "oxfmt": "^0.45.0",
-    "oxlint": "^1.60.0",
-    "tsdown": "^0.22.0",
-    "typescript": "^6.0.3",
-    "vitest": "^4.1.7"
+    "@types/node": "^26.2.0",
+    "oxfmt": "^0.62.0",
+    "oxlint": "^1.77.0",
+    "tsdown": "^0.22.14",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
   },
   "engines": {
     "node": ">=24"
   },
-  "packageManager": "pnpm@11.3.0"
+  "packageManager": "pnpm@11.13.1"
 }

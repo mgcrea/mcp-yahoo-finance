@@ -10,11 +10,11 @@ const toDateString = (epochSeconds: number): string =>
 
 export const registerOptionTools = (server: McpServer, client: YahooClient): void => {
   server.registerTool(
-    "get_option_expiration_dates",
+    "yahoo_get_option_expiration_dates",
     {
       description:
         "Get the available option expiration dates for a ticker, as an array of YYYY-MM-DD " +
-        "strings. Use one of these with get_option_chain.",
+        "strings. Use one of these with yahoo_get_option_chain.",
       inputSchema: {
         ticker: z.string().describe("Stock ticker symbol, e.g. 'AAPL'"),
       },
@@ -29,11 +29,11 @@ export const registerOptionTools = (server: McpServer, client: YahooClient): voi
   );
 
   server.registerTool(
-    "get_option_chain",
+    "yahoo_get_option_chain",
     {
       description:
         "Get the option chain (calls or puts) for a ticker at a given expiration date. " +
-        "Call get_option_expiration_dates first to obtain a valid expiration_date.",
+        "Call yahoo_get_option_expiration_dates first to obtain a valid expiration_date.",
       inputSchema: {
         ticker: z.string().describe("Stock ticker symbol, e.g. 'AAPL'"),
         expiration_date: z.string().describe("Expiration date as YYYY-MM-DD"),
@@ -54,7 +54,7 @@ export const registerOptionTools = (server: McpServer, client: YahooClient): voi
         if (!chain) {
           throw new YahooFinanceApiError(
             `No option chain for ${ticker} on ${expiration_date}. ` +
-              "Use get_option_expiration_dates for valid dates.",
+              "Use yahoo_get_option_expiration_dates for valid dates.",
           );
         }
         return option_type === "calls" ? (chain.calls ?? []) : (chain.puts ?? []);

@@ -37,17 +37,17 @@ pnpm start        # speaks MCP JSON-RPC over stdio
 
 ## Tools
 
-| Tool                          | Description                                                                                                  |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `get_historical_stock_prices` | OHLCV history for a ticker (`period`, `interval`). Intraday intervals (`1m`–`90m`) return ~the last 60 days. |
-| `get_stock_actions`           | Dividend and stock-split history.                                                                            |
-| `get_stock_info`              | Comprehensive info: price, profile, key stats, financial metrics (≈ yfinance `.info`).                       |
-| `get_yahoo_finance_news`      | Recent news articles for a ticker.                                                                           |
-| `get_financial_statement`     | Income / balance-sheet / cash-flow statement, annual or quarterly.                                           |
-| `get_holder_info`             | Major / institutional / mutual-fund holders, insider transactions / purchases / roster.                      |
-| `get_option_expiration_dates` | Available option expiration dates.                                                                           |
-| `get_option_chain`            | Calls or puts for a given expiration date.                                                                   |
-| `get_recommendations`         | Analyst recommendation trend, or upgrades/downgrades (deduped per firm).                                     |
+| Tool                                | Description                                                                                                  |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `yahoo_get_historical_stock_prices` | OHLCV history for a ticker (`period`, `interval`). Intraday intervals (`1m`–`90m`) return ~the last 60 days. |
+| `yahoo_get_stock_actions`           | Dividend and stock-split history.                                                                            |
+| `yahoo_get_stock_info`              | Comprehensive info: price, profile, key stats, financial metrics (≈ yfinance `.info`).                       |
+| `yahoo_get_yahoo_finance_news`      | Recent news articles for a ticker.                                                                           |
+| `yahoo_get_financial_statement`     | Income / balance-sheet / cash-flow statement, annual or quarterly.                                           |
+| `yahoo_get_holder_info`             | Major / institutional / mutual-fund holders, insider transactions / purchases / roster.                      |
+| `yahoo_get_option_expiration_dates` | Available option expiration dates.                                                                           |
+| `yahoo_get_option_chain`            | Calls or puts for a given expiration date.                                                                   |
+| `yahoo_get_recommendations`         | Analyst recommendation trend, or upgrades/downgrades (deduped per firm).                                     |
 
 ## Configuration
 

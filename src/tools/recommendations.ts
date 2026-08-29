@@ -15,7 +15,7 @@ type UpgradeRow = {
 
 export const registerRecommendationTools = (server: McpServer, client: YahooClient): void => {
   server.registerTool(
-    "get_recommendations",
+    "yahoo_get_recommendations",
     {
       description:
         "Get analyst recommendations for a ticker. recommendation_type 'recommendations' returns " +
