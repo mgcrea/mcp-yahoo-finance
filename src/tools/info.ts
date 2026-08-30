@@ -1,8 +1,8 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import type { YahooClient } from "../client/http";
-import { wrap } from "./util";
+import type { YahooClient } from "#/client/http";
+import { wrap } from "#/tools/util";
 
 // Broad module set approximating yfinance's `.info` — price, profile, key
 // stats, financial metrics, and calendar/earnings context.

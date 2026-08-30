@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 
-import { BUILD_INFO } from "./build-info";
-import { loadConfig } from "./config";
-import { createServer } from "./server";
+import { BUILD_INFO } from "#/build-info";
+import { loadConfig } from "#/config";
+import { createServer } from "#/server";
 
 // All logging goes to stderr — stdout carries the JSON-RPC stream and any stray
 // write there corrupts the MCP protocol.

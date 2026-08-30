@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { reshapeStatement, reshapeTimeseries, timeseriesType } from "../src/lib/reshape";
+import { reshapeStatement, reshapeTimeseries, timeseriesType } from "#/lib/reshape";
 
 describe("reshapeStatement", () => {
   it("pivots period rows into {date, ...metrics}, unwrapping and nulling NaN", () => {

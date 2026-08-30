@@ -1,9 +1,9 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import type { YahooClient } from "../client/http";
-import { toISO } from "../lib/format";
-import { wrap } from "./util";
+import type { YahooClient } from "#/client/http";
+import { toISO } from "#/lib/format";
+import { wrap } from "#/tools/util";
 
 type NewsItem = {
   uuid?: string;

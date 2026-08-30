@@ -1,9 +1,9 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { YahooFinanceApiError } from "../client/errors";
-import type { YahooClient } from "../client/http";
-import { wrap } from "./util";
+import { YahooFinanceApiError } from "#/client/errors";
+import type { YahooClient } from "#/client/http";
+import { wrap } from "#/tools/util";
 
 const toDateString = (epochSeconds: number): string =>
   new Date(epochSeconds * 1000).toISOString().slice(0, 10);

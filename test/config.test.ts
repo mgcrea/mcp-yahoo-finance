@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { loadConfig } from "../src/config";
+import { loadConfig } from "#/config";
 
 describe("loadConfig", () => {
   it("applies sensible defaults on an empty env", () => {

@@ -1,10 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import { BUILD_INFO } from "./build-info";
-import { YahooClient } from "./client/http";
-import type { Logger } from "./client/session";
-import type { Config } from "./config";
-import { registerTools } from "./tools/index";
+import { BUILD_INFO } from "#/build-info";
+import { YahooClient } from "#/client/http";
+import type { Logger } from "#/client/session";
+import type { Config } from "#/config";
+import { registerTools } from "#/tools/index";
 
 export const SERVER_NAME = BUILD_INFO.name;
 export const SERVER_VERSION = BUILD_INFO.version;

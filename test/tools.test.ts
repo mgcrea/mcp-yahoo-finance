@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 
-import type { YahooClient } from "../src/client/http";
-import { registerTools } from "../src/tools/index";
-import type { ToolResult } from "../src/tools/util";
+import type { YahooClient } from "#/client/http";
+import { registerTools } from "#/tools/index";
+import type { ToolResult } from "#/tools/util";
 
 type Handler = (args: Record<string, unknown>) => Promise<ToolResult>;
 

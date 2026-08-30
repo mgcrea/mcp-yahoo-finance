@@ -1,6 +1,6 @@
 import { Cookie, CookieJar } from "tough-cookie";
 
-import { YahooCrumbError } from "./errors";
+import { YahooCrumbError } from "#/client/errors";
 
 export type Logger = {
   debug?(...args: unknown[]): void;

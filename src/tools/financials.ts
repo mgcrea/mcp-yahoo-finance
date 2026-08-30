@@ -1,10 +1,10 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import type { YahooClient } from "../client/http";
-import { periodToRange } from "../lib/period";
-import { reshapeStatement, reshapeTimeseries, timeseriesType } from "../lib/reshape";
-import { wrap } from "./util";
+import type { YahooClient } from "#/client/http";
+import { periodToRange } from "#/lib/period";
+import { reshapeStatement, reshapeTimeseries, timeseriesType } from "#/lib/reshape";
+import { wrap } from "#/tools/util";
 
 const FINANCIAL_TYPES = [
   "income_stmt",

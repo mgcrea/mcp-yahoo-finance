@@ -1,5 +1,5 @@
-import { YahooFinanceApiError } from "../client/errors";
-import { sanitize } from "../lib/format";
+import { YahooFinanceApiError } from "#/client/errors";
+import { sanitize } from "#/lib/format";
 
 export type ToolResult = {
   content: { type: "text"; text: string }[];

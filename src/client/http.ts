@@ -1,8 +1,8 @@
-import type { Config } from "../config";
-import { YahooFinanceApiError } from "./errors";
-import { CrumbSession, DEFAULT_USER_AGENT, type Logger } from "./session";
+import { YahooFinanceApiError } from "#/client/errors";
+import { CrumbSession, DEFAULT_USER_AGENT, type Logger } from "#/client/session";
+import type { Config } from "#/config";
 
-export type { Logger } from "./session";
+export type { Logger } from "#/client/session";
 
 const HOST = "https://query2.finance.yahoo.com";
 

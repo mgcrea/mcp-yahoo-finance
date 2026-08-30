@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { nanToNull, sanitize, toISO, unwrap } from "../src/lib/format";
+import { nanToNull, sanitize, toISO, unwrap } from "#/lib/format";
 
 describe("toISO", () => {
   it("treats small numbers as unix seconds", () => {

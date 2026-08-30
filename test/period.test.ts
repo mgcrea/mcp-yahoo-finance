@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { INTERVALS, PERIODS, periodToRange } from "../src/lib/period";
+import { INTERVALS, PERIODS, periodToRange } from "#/lib/period";
 
 const NOW = new Date("2024-06-15T12:00:00Z");
 const asDate = (epoch: number) => new Date(epoch * 1000).toISOString();

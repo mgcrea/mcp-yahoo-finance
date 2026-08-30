@@ -1,10 +1,10 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import type { ChartResult, YahooClient } from "../client/http";
-import { toISO } from "../lib/format";
-import { INTERVALS, PERIODS, periodToRange } from "../lib/period";
-import { wrap } from "./util";
+import type { ChartResult, YahooClient } from "#/client/http";
+import { toISO } from "#/lib/format";
+import { INTERVALS, PERIODS, periodToRange } from "#/lib/period";
+import { wrap } from "#/tools/util";
 
 const at = <T>(arr: (T | null | undefined)[] | undefined, i: number): T | null =>
   (arr?.[i] ?? null) as T | null;
