@@ -22,6 +22,7 @@ export const registerInfoTools = (server: McpServer, client: YahooClient): void 
   server.registerTool(
     "yahoo_get_stock_info",
     {
+      title: "Yahoo Finance: Get Stock Info",
       description:
         "Get comprehensive information for a ticker: current price & trading data, company " +
         "profile, financial metrics, key statistics, earnings, dividends and risk metrics. " +

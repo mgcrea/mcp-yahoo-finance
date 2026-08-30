@@ -12,6 +12,7 @@ export const registerOptionTools = (server: McpServer, client: YahooClient): voi
   server.registerTool(
     "yahoo_get_option_expiration_dates",
     {
+      title: "Yahoo Finance: Get Option Expiration Dates",
       description:
         "Get the available option expiration dates for a ticker, as an array of YYYY-MM-DD " +
         "strings. Use one of these with yahoo_get_option_chain.",
@@ -31,6 +32,7 @@ export const registerOptionTools = (server: McpServer, client: YahooClient): voi
   server.registerTool(
     "yahoo_get_option_chain",
     {
+      title: "Yahoo Finance: Get Option Chain",
       description:
         "Get the option chain (calls or puts) for a ticker at a given expiration date. " +
         "Call yahoo_get_option_expiration_dates first to obtain a valid expiration_date.",

@@ -18,6 +18,7 @@ export const registerNewsTools = (server: McpServer, client: YahooClient): void 
   server.registerTool(
     "yahoo_get_yahoo_finance_news",
     {
+      title: "Yahoo Finance: Get Yahoo Finance News",
       description:
         "Get recent Yahoo Finance news articles for a ticker, as an array of " +
         "{uuid, title, publisher, link, publishedAt, type}.",

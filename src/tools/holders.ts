@@ -28,6 +28,7 @@ export const registerHolderTools = (server: McpServer, client: YahooClient): voi
   server.registerTool(
     "yahoo_get_holder_info",
     {
+      title: "Yahoo Finance: Get Holder Info",
       description:
         "Get ownership / holder information for a ticker. holder_type selects between major " +
         "holders breakdown, institutional holders, mutual-fund holders, insider transactions, " +

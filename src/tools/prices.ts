@@ -29,6 +29,7 @@ export const registerPriceTools = (server: McpServer, client: YahooClient): void
   server.registerTool(
     "yahoo_get_historical_stock_prices",
     {
+      title: "Yahoo Finance: Get Historical Stock Prices",
       description:
         "Get historical OHLCV stock prices for a ticker as an array of " +
         "{date, open, high, low, close, adjclose, volume}. " +
@@ -51,6 +52,7 @@ export const registerPriceTools = (server: McpServer, client: YahooClient): void
   server.registerTool(
     "yahoo_get_stock_actions",
     {
+      title: "Yahoo Finance: Get Stock Actions",
       description:
         "Get dividend and stock-split history for a ticker, as " +
         "{dividends: [{date, amount}], splits: [{date, numerator, denominator, ratio}]}.",

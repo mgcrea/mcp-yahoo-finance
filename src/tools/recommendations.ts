@@ -17,6 +17,7 @@ export const registerRecommendationTools = (server: McpServer, client: YahooClie
   server.registerTool(
     "yahoo_get_recommendations",
     {
+      title: "Yahoo Finance: Get Recommendations",
       description:
         "Get analyst recommendations for a ticker. recommendation_type 'recommendations' returns " +
         "the buy/hold/sell trend; 'upgrades_downgrades' returns rating changes, filtered to the " +

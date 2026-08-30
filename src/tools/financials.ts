@@ -63,6 +63,7 @@ export const registerFinancialTools = (server: McpServer, client: YahooClient): 
   server.registerTool(
     "yahoo_get_financial_statement",
     {
+      title: "Yahoo Finance: Get Financial Statement",
       description:
         "Get a financial statement for a ticker as an array of period objects (each with a " +
         "`date` plus the statement's line-item metrics), newest first. " +
