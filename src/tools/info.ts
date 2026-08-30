@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 import type { YahooClient } from "#/client/http";
@@ -27,9 +27,9 @@ export const registerInfoTools = (server: McpServer, client: YahooClient): void 
         "Get comprehensive information for a ticker: current price & trading data, company " +
         "profile, financial metrics, key statistics, earnings, dividends and risk metrics. " +
         "Combines Yahoo's quote and quoteSummary data into a single flat object.",
-      inputSchema: {
+      inputSchema: z.object({
         ticker: z.string().describe("Stock ticker symbol, e.g. 'AAPL'"),
-      },
+      }),
       annotations: { readOnlyHint: true },
     },
     async ({ ticker }) =>

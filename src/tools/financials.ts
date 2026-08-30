@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 import type { YahooClient } from "#/client/http";
@@ -68,12 +68,12 @@ export const registerFinancialTools = (server: McpServer, client: YahooClient): 
         "Get a financial statement for a ticker as an array of period objects (each with a " +
         "`date` plus the statement's line-item metrics), newest first. " +
         "financial_type selects the statement and annual/quarterly cadence.",
-      inputSchema: {
+      inputSchema: z.object({
         ticker: z.string().describe("Stock ticker symbol, e.g. 'AAPL'"),
         financial_type: z
           .enum(FINANCIAL_TYPES)
           .describe("Which statement: income / balance sheet / cash flow, annual or quarterly"),
-      },
+      }),
       annotations: { readOnlyHint: true },
     },
     async ({ ticker, financial_type }) =>

@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 
 import type { YahooClient } from "#/client/http";
 import { registerFinancialTools } from "#/tools/financials";

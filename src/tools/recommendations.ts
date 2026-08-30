@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 import type { YahooClient } from "#/client/http";
@@ -22,7 +22,7 @@ export const registerRecommendationTools = (server: McpServer, client: YahooClie
         "Get analyst recommendations for a ticker. recommendation_type 'recommendations' returns " +
         "the buy/hold/sell trend; 'upgrades_downgrades' returns rating changes, filtered to the " +
         "last `months_back` months and deduped to the latest entry per firm.",
-      inputSchema: {
+      inputSchema: z.object({
         ticker: z.string().describe("Stock ticker symbol, e.g. 'AAPL'"),
         recommendation_type: z
           .enum(["recommendations", "upgrades_downgrades"])
@@ -34,7 +34,7 @@ export const registerRecommendationTools = (server: McpServer, client: YahooClie
           .positive()
           .default(12)
           .describe("For upgrades_downgrades: how many months back to include (default 12)"),
-      },
+      }),
       annotations: { readOnlyHint: true },
     },
     async ({ ticker, recommendation_type, months_back }) =>

@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 import type { ChartResult, YahooClient } from "#/client/http";
@@ -34,11 +34,11 @@ export const registerPriceTools = (server: McpServer, client: YahooClient): void
         "Get historical OHLCV stock prices for a ticker as an array of " +
         "{date, open, high, low, close, adjclose, volume}. " +
         "Intraday intervals (1m–90m) only return roughly the last 60 days of data.",
-      inputSchema: {
+      inputSchema: z.object({
         ticker: z.string().describe("Stock ticker symbol, e.g. 'AAPL'"),
         period: z.enum(PERIODS).default("1mo").describe("Time range (default 1mo)"),
         interval: z.enum(INTERVALS).default("1d").describe("Candle interval (default 1d)"),
-      },
+      }),
       annotations: { readOnlyHint: true },
     },
     async ({ ticker, period, interval }) =>
@@ -56,10 +56,10 @@ export const registerPriceTools = (server: McpServer, client: YahooClient): void
       description:
         "Get dividend and stock-split history for a ticker, as " +
         "{dividends: [{date, amount}], splits: [{date, numerator, denominator, ratio}]}.",
-      inputSchema: {
+      inputSchema: z.object({
         ticker: z.string().describe("Stock ticker symbol, e.g. 'AAPL'"),
         period: z.enum(PERIODS).default("max").describe("Time range (default max)"),
-      },
+      }),
       annotations: { readOnlyHint: true },
     },
     async ({ ticker, period }) =>

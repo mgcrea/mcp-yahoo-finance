@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 import type { YahooClient } from "#/client/http";
@@ -33,10 +33,10 @@ export const registerHolderTools = (server: McpServer, client: YahooClient): voi
         "Get ownership / holder information for a ticker. holder_type selects between major " +
         "holders breakdown, institutional holders, mutual-fund holders, insider transactions, " +
         "insider purchase activity, and the insider roster.",
-      inputSchema: {
+      inputSchema: z.object({
         ticker: z.string().describe("Stock ticker symbol, e.g. 'AAPL'"),
         holder_type: z.enum(HOLDER_TYPES).describe("Which holder dataset to return"),
-      },
+      }),
       annotations: { readOnlyHint: true },
     },
     async ({ ticker, holder_type }) =>

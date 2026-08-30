@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 import type { YahooClient } from "#/client/http";
@@ -22,9 +22,9 @@ export const registerNewsTools = (server: McpServer, client: YahooClient): void 
       description:
         "Get recent Yahoo Finance news articles for a ticker, as an array of " +
         "{uuid, title, publisher, link, publishedAt, type}.",
-      inputSchema: {
+      inputSchema: z.object({
         ticker: z.string().describe("Stock ticker symbol, e.g. 'AAPL'"),
-      },
+      }),
       annotations: { readOnlyHint: true },
     },
     async ({ ticker }) =>

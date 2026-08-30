@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
 import { YahooFinanceApiError } from "#/client/errors";
@@ -16,9 +16,9 @@ export const registerOptionTools = (server: McpServer, client: YahooClient): voi
       description:
         "Get the available option expiration dates for a ticker, as an array of YYYY-MM-DD " +
         "strings. Use one of these with yahoo_get_option_chain.",
-      inputSchema: {
+      inputSchema: z.object({
         ticker: z.string().describe("Stock ticker symbol, e.g. 'AAPL'"),
-      },
+      }),
       annotations: { readOnlyHint: true },
     },
     async ({ ticker }) =>
@@ -36,11 +36,11 @@ export const registerOptionTools = (server: McpServer, client: YahooClient): voi
       description:
         "Get the option chain (calls or puts) for a ticker at a given expiration date. " +
         "Call yahoo_get_option_expiration_dates first to obtain a valid expiration_date.",
-      inputSchema: {
+      inputSchema: z.object({
         ticker: z.string().describe("Stock ticker symbol, e.g. 'AAPL'"),
         expiration_date: z.string().describe("Expiration date as YYYY-MM-DD"),
         option_type: z.enum(["calls", "puts"]).describe("Which side of the chain to return"),
-      },
+      }),
       annotations: { readOnlyHint: true },
     },
     async ({ ticker, expiration_date, option_type }) =>
