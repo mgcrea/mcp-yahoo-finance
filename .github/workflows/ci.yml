@@ -7,6 +7,9 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+  # Weekly, for the live job: Yahoo changes what it accepts without notice.
+  schedule:
+    - cron: "17 6 * * 1"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -90,6 +93,53 @@ jobs:
           | env  HOME=/nonexistent node dist/cli.js 2>/dev/null > /tmp/tools.json
           grep -q 'yahoo_get_option_chain' /tmp/tools.json \
             || { echo "server did not answer tools/list without credentials"; exit 1; }
+
+  # The one check that talks to Yahoo. Every other test runs against a mocked
+  # fetch, so none of them can see the failure that actually happens: Yahoo
+  # answering 429 to a TLS handshake it no longer accepts (src/client/transport.ts).
+  # Deliberately not a dependency of publish-npm — Yahoo changing its mind must
+  # not block an unrelated release — but red here means the published server
+  # is broken for everyone.
+  live:
+    name: Live against Yahoo
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v5
+      - name: Setup pnpm 🔧
+        uses: pnpm/action-setup@v6
+      - name: Setup node 🔧
+        uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+          cache: "pnpm"
+      - name: Install 🪄
+        run: pnpm install --frozen-lockfile
+      - name: Build 📦
+        run: pnpm run build
+      - name: Call Yahoo through the server 🌐
+        run: |
+          {
+            printf '%s\n' \
+              '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
+              '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+              '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"yahoo_get_historical_stock_prices","arguments":{"ticker":"AAPL","period":"5d","interval":"1d"}}}' \
+              '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"yahoo_get_stock_info","arguments":{"ticker":"AAPL"}}}'
+            sleep 20
+          } | YAHOO_FINANCE_DEBUG=1 node dist/cli.js > /tmp/live.json
+          node -e '
+            const lines = require("fs").readFileSync("/tmp/live.json", "utf8").split("\n").filter(Boolean).map(JSON.parse);
+            let failed = false;
+            for (const id of [2, 3]) {
+              const r = lines.find((l) => l.id === id)?.result;
+              const text = r?.content?.[0]?.text ?? "<no response>";
+              const bad = !r || r.isError;
+              console.log(`${id}: ${bad ? "FAIL" : "ok"} ${text.slice(0, 160)}`);
+              failed ||= bad;
+            }
+            process.exit(failed ? 1 : 0);
+          '
 
   publish-npm:
     name: Publish to npm
