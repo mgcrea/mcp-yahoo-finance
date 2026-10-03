@@ -19,20 +19,21 @@ required**: the cookie/crumb handshake Yahoo expects is handled automatically.
 
 ## Stack
 
-Node ≥ 24 · TypeScript · ESM · [`@modelcontextprotocol/sdk`] · `zod` ·
+Node ≥ 24 · TypeScript · ESM · [`@modelcontextprotocol/server`] · `zod` ·
 `tough-cookie` · tsdown · oxlint + oxfmt · vitest
 
-## Install & build
+## Install
+
+```bash
+npx -y @mgcrea/mcp-yahoo-finance   # speaks MCP JSON-RPC over stdio
+```
+
+From source:
 
 ```bash
 pnpm install
 pnpm build        # → dist/cli.js (bin) + dist/index.js (library)
-```
-
-## Run
-
-```bash
-pnpm start        # speaks MCP JSON-RPC over stdio
+pnpm start
 ```
 
 ## Tools
@@ -46,7 +47,7 @@ pnpm start        # speaks MCP JSON-RPC over stdio
 | `yahoo_get_financial_statement`     | Income / balance-sheet / cash-flow statement, annual or quarterly.                                           |
 | `yahoo_get_holder_info`             | Major / institutional / mutual-fund holders, insider transactions / purchases / roster.                      |
 | `yahoo_get_option_expiration_dates` | Available option expiration dates.                                                                           |
-| `yahoo_get_option_chain`            | Calls or puts for a given expiration date.                                                                   |
+| `yahoo_get_option_chain`            | Calls or puts for an expiration date. `strike_window_pct` keeps strikes near spot; `fields` picks columns.   |
 | `yahoo_get_recommendations`         | Analyst recommendation trend, or upgrades/downgrades (deduped per firm).                                     |
 
 ## Configuration
@@ -56,8 +57,8 @@ All environment variables are optional — see [`.env.example`](.env.example):
 | Variable                                       | Default | Purpose                                              |
 | ---------------------------------------------- | ------- | ---------------------------------------------------- |
 | `YAHOO_FINANCE_DEBUG`                          | –       | Verbose stderr logging.                              |
-| `YAHOO_FINANCE_CONCURRENCY`                    | `4`     | Max concurrent requests (avoid 429s).                |
-| `YAHOO_FINANCE_REQUEST_TIMEOUT_MS`             | `30000` | Per-request timeout.                                 |
+| `YAHOO_FINANCE_CONCURRENCY`                    | `4`     | Max in-flight requests to Yahoo (avoid 429s).        |
+| `YAHOO_FINANCE_REQUEST_TIMEOUT_MS`             | `30000` | Per-request timeout, body included.                  |
 | `YAHOO_FINANCE_COOKIE` / `YAHOO_FINANCE_CRUMB` | –       | Skip the automatic handshake with values you supply. |
 
 > **Rate limiting.** Yahoo throttles bursts (HTTP 429), especially from
@@ -72,15 +73,16 @@ All environment variables are optional — see [`.env.example`](.env.example):
   "mcpServers": {
     "yahoo-finance": {
       "type": "stdio",
-      "command": "node",
-      "args": ["/absolute/path/to/mcp-yahoo-finance/dist/cli.js"]
+      "command": "npx",
+      "args": ["-y", "@mgcrea/mcp-yahoo-finance"]
     }
   }
 }
 ```
 
-Or, after `pnpm build`, link the bin globally and use `yahoo-finance-mcp` as the
-command.
+Tickers are normalized before they reach Yahoo: US share classes typed as
+`BRK.B` or `BRK/B` become `BRK-B`, while exchange suffixes such as `SHOP.TO` or
+`RIO.L` pass through unchanged.
 
 ## Docker
 
@@ -104,4 +106,4 @@ pnpm test
 
 MIT — © Olivier Louvignes
 
-[`@modelcontextprotocol/sdk`]: https://github.com/modelcontextprotocol/typescript-sdk
+[`@modelcontextprotocol/server`]: https://github.com/modelcontextprotocol/typescript-sdk
