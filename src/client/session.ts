@@ -1,6 +1,6 @@
 import { Cookie, CookieJar } from "tough-cookie";
 
-import { YahooCrumbError } from "#/client/errors";
+import { RATE_LIMIT_MESSAGE, YahooCrumbError } from "#/client/errors";
 
 export type Logger = {
   debug?(...args: unknown[]): void;
@@ -207,10 +207,7 @@ export class CrumbSession {
       },
     });
     if (res.status === 429) {
-      throw new YahooCrumbError(
-        "Yahoo Finance rate limit hit while fetching a crumb (HTTP 429). Retry later, lower " +
-          "YAHOO_FINANCE_CONCURRENCY, or set YAHOO_FINANCE_COOKIE + YAHOO_FINANCE_CRUMB.",
-      );
+      throw new YahooCrumbError(`${RATE_LIMIT_MESSAGE} (While fetching a crumb.)`);
     }
     if (res.status !== 200) {
       throw new YahooCrumbError(`Crumb request failed (status ${res.status})`);

@@ -1,3 +1,12 @@
+// Yahoo sends 429 for two different things: a real burst limit, and a TLS
+// handshake it does not accept (see transport.ts). Only the first is fixed by
+// waiting, and cookies fix neither, so the message must not send the model off
+// to find some.
+export const RATE_LIMIT_MESSAGE =
+  "Yahoo Finance answered HTTP 429. Retry in a minute, and lower YAHOO_FINANCE_CONCURRENCY " +
+  "if many tickers are being fetched at once. If every call fails, Yahoo has likely changed " +
+  "the browser fingerprint it accepts; upgrade @mgcrea/mcp-yahoo-finance.";
+
 export class YahooFinanceApiError extends Error {
   override readonly name: string = "YahooFinanceApiError";
   readonly status: number | undefined;

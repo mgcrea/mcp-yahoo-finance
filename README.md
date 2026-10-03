@@ -12,8 +12,8 @@ required**: the cookie/crumb handshake Yahoo expects is handled automatically.
 - 📈 **9 tools** covering prices, fundamentals, options, holders and analyst data
 - 🔓 **No auth** — the Yahoo cookie + crumb handshake (incl. the EU consent wall)
   is performed transparently; an optional manual override is available
-- 🌐 **Raw HTTP** to `query{1,2}.finance.yahoo.com` over native `fetch` — no
-  third-party data SDK
+- 🌐 **Raw HTTP** to `query{1,2}.finance.yahoo.com` over `node:https` with a
+  browser TLS fingerprint — no third-party data SDK
 - 🧰 Built the same way as the sibling `@mgcrea` MCPs: ESM, tsdown, oxlint/oxfmt,
   vitest, Docker + CI
 
@@ -61,10 +61,13 @@ All environment variables are optional — see [`.env.example`](.env.example):
 | `YAHOO_FINANCE_REQUEST_TIMEOUT_MS`             | `30000` | Per-request timeout, body included.                  |
 | `YAHOO_FINANCE_COOKIE` / `YAHOO_FINANCE_CRUMB` | –       | Skip the automatic handshake with values you supply. |
 
-> **Rate limiting.** Yahoo throttles bursts (HTTP 429), especially from
-> datacenter IPs. Keep `YAHOO_FINANCE_CONCURRENCY` low, and if you are
-> persistently blocked, provide `YAHOO_FINANCE_COOKIE` + `YAHOO_FINANCE_CRUMB`
-> captured from a browser session.
+> **HTTP 429.** Yahoo answers 429 for two reasons. One is a burst limit: wait,
+> and keep `YAHOO_FINANCE_CONCURRENCY` low when fetching many tickers. The other
+> is a TLS handshake that does not look like a browser's, which Yahoo refuses on
+> every request and from any IP — cookies and a crumb do not get past it. This
+> server presents Chrome's TLS parameters for that reason (see
+> [`src/client/transport.ts`](src/client/transport.ts)). If every call starts
+> failing with 429, Yahoo has moved what it accepts: upgrade, or open an issue.
 
 ## Wire up to Claude Code / Desktop
 

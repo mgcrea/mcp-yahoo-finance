@@ -1,6 +1,7 @@
-import { YahooFinanceApiError } from "#/client/errors";
+import { RATE_LIMIT_MESSAGE, YahooFinanceApiError } from "#/client/errors";
 import { limitFetch } from "#/client/limit";
 import { CrumbSession, DEFAULT_USER_AGENT, type Logger } from "#/client/session";
+import { chromeFetch } from "#/client/transport";
 import type { Config } from "#/config";
 import { normalizeTicker } from "#/lib/ticker";
 
@@ -70,10 +71,7 @@ const unwrapEnvelope = (json: unknown, rootKey: string): unknown => {
 
 // Turn Yahoo's terse 429 body into an actionable message.
 const rateLimitMessage = (status: number, fallback: string): string =>
-  status === 429
-    ? "Yahoo Finance rate limit hit (HTTP 429). Lower YAHOO_FINANCE_CONCURRENCY, retry later, " +
-      "or set YAHOO_FINANCE_COOKIE + YAHOO_FINANCE_CRUMB from a browser session."
-    : fallback;
+  status === 429 ? RATE_LIMIT_MESSAGE : fallback;
 
 // Every error thrown below carries either `status` or `code`/message, so the
 // retry decision can be made from the error alone (no out-of-band signal).
@@ -94,7 +92,7 @@ export class YahooClient {
   private readonly userAgent = DEFAULT_USER_AGENT;
 
   constructor(opts: YahooClientOptions) {
-    this.fetchImpl = limitFetch(opts.fetch ?? fetch, {
+    this.fetchImpl = limitFetch(opts.fetch ?? chromeFetch, {
       concurrency: opts.config.concurrency,
       timeoutMs: opts.config.requestTimeoutMs,
     });
