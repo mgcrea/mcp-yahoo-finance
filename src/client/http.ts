@@ -1,4 +1,5 @@
 import { YahooFinanceApiError } from "#/client/errors";
+import { limitFetch } from "#/client/limit";
 import { CrumbSession, DEFAULT_USER_AGENT, type Logger } from "#/client/session";
 import type { Config } from "#/config";
 import { normalizeTicker } from "#/lib/ticker";
@@ -93,10 +94,13 @@ export class YahooClient {
   private readonly userAgent = DEFAULT_USER_AGENT;
 
   constructor(opts: YahooClientOptions) {
-    this.fetchImpl = opts.fetch ?? fetch;
+    this.fetchImpl = limitFetch(opts.fetch ?? fetch, {
+      concurrency: opts.config.concurrency,
+      timeoutMs: opts.config.requestTimeoutMs,
+    });
     this.logger = opts.logger;
     this.session = new CrumbSession({
-      ...(opts.fetch ? { fetch: opts.fetch } : {}),
+      fetch: this.fetchImpl,
       ...(opts.logger ? { logger: opts.logger } : {}),
       ...(opts.config.cookie ? { cookie: opts.config.cookie } : {}),
       ...(opts.config.crumb ? { crumb: opts.config.crumb } : {}),

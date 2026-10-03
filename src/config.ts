@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const ConfigSchema = z.object({
   debug: z.boolean().default(false),
-  // Cap concurrent Yahoo requests to avoid 429s. (Reserved for future queueing.)
+  // Cap on in-flight Yahoo requests (handshake included), to stay under the 429 threshold.
   concurrency: z.number().int().positive().max(32).default(4),
   requestTimeoutMs: z.number().int().positive().default(30_000),
   // Optional manual cookie/crumb override — bypasses the automatic handshake.
