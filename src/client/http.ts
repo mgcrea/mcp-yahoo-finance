@@ -1,6 +1,7 @@
 import { YahooFinanceApiError } from "#/client/errors";
 import { CrumbSession, DEFAULT_USER_AGENT, type Logger } from "#/client/session";
 import type { Config } from "#/config";
+import { normalizeTicker } from "#/lib/ticker";
 
 export type { Logger } from "#/client/session";
 
@@ -161,15 +162,19 @@ export class YahooClient {
     params: { period1: number; period2: number; interval: string; events?: string },
   ): Promise<ChartResult> {
     // The `chart` envelope nests its data in a single-element `result` array.
-    return this.request<ChartResult[]>(`/v8/finance/chart/${encodeURIComponent(symbol)}`, "chart", {
-      query: params,
-    }).then((arr) => (Array.isArray(arr) ? (arr[0] ?? {}) : (arr ?? {})) as ChartResult);
+    return this.request<ChartResult[]>(
+      `/v8/finance/chart/${encodeURIComponent(normalizeTicker(symbol))}`,
+      "chart",
+      {
+        query: params,
+      },
+    ).then((arr) => (Array.isArray(arr) ? (arr[0] ?? {}) : (arr ?? {})) as ChartResult);
   }
 
   /** Real-time-ish quote rows for one or more symbols. Crumb required. */
   quote(symbols: string[]): Promise<unknown[]> {
     return this.request<{ result?: unknown[] } | unknown[]>("/v7/finance/quote", "quoteResponse", {
-      query: { symbols: symbols.join(",") },
+      query: { symbols: symbols.map(normalizeTicker).join(",") },
       needsCrumb: true,
     }).then((r) => (Array.isArray(r) ? r : ((r as { result?: unknown[] })?.result ?? [])));
   }
@@ -177,7 +182,7 @@ export class YahooClient {
   /** Modular fundamentals/profile data. Crumb required. */
   quoteSummary(symbol: string, modules: string[]): Promise<Record<string, unknown>> {
     return this.request<unknown[]>(
-      `/v10/finance/quoteSummary/${encodeURIComponent(symbol)}`,
+      `/v10/finance/quoteSummary/${encodeURIComponent(normalizeTicker(symbol))}`,
       "quoteSummary",
       { query: { modules: modules.join(",") }, needsCrumb: true },
     ).then((arr) => (Array.isArray(arr) ? (arr[0] ?? {}) : {}) as Record<string, unknown>);
@@ -186,14 +191,14 @@ export class YahooClient {
   /** Search — returns `{ quotes, news, ... }`. No crumb required. */
   search(query: string): Promise<{ news?: unknown[]; quotes?: unknown[] }> {
     return this.request("/v1/finance/search", "__none__", {
-      query: { q: query, newsCount: 20, quotesCount: 6 },
+      query: { q: normalizeTicker(query), newsCount: 20, quotesCount: 6 },
     }) as Promise<{ news?: unknown[]; quotes?: unknown[] }>;
   }
 
   /** Options chain (and expiration dates). Crumb required. */
   options(symbol: string, date?: number): Promise<Record<string, unknown>> {
     return this.request<unknown[]>(
-      `/v7/finance/options/${encodeURIComponent(symbol)}`,
+      `/v7/finance/options/${encodeURIComponent(normalizeTicker(symbol))}`,
       "optionChain",
       { query: date ? { date } : {}, needsCrumb: true },
     ).then((arr) => (Array.isArray(arr) ? (arr[0] ?? {}) : {}) as Record<string, unknown>);
@@ -205,7 +210,7 @@ export class YahooClient {
     params: { type: string; period1: number; period2: number },
   ): Promise<unknown[]> {
     return this.request<{ result?: unknown[] } | unknown[]>(
-      `/ws/fundamentals-timeseries/v1/finance/timeseries/${encodeURIComponent(symbol)}`,
+      `/ws/fundamentals-timeseries/v1/finance/timeseries/${encodeURIComponent(normalizeTicker(symbol))}`,
       "timeseries",
       { query: params, needsCrumb: true },
     ).then((r) => (Array.isArray(r) ? r : ((r as { result?: unknown[] })?.result ?? [])));
