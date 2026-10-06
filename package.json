@@ -1,6 +1,6 @@
 {
   "name": "@mgcrea/mcp-yahoo-finance",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Model Context Protocol server for Yahoo Finance market data",
   "keywords": [
     "finance",
