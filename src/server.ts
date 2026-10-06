@@ -27,6 +27,6 @@ export const createServer = (opts: CreateServerOptions): CreatedServer => {
     ...(opts.fetch ? { fetch: opts.fetch } : {}),
     ...(opts.logger ? { logger: opts.logger } : {}),
   });
-  registerTools(server, client);
+  registerTools(server, client, { allowWrites: opts.config.allowWrites });
   return { server, client };
 };

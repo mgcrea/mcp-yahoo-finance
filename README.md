@@ -52,8 +52,9 @@ pnpm start
 
 ### Watchlists (signed-in cookie only)
 
-These appear only when `YAHOO_FINANCE_COOKIE` holds a signed-in session — the
+`yahoo_list_watchlists` appears only when `YAHOO_FINANCE_COOKIE` holds a signed-in session — the
 `A3`, `T` and `Y` cookies from a finance.yahoo.com tab where you are logged in.
+The four that change the account also need `YAHOO_FINANCE_ALLOW_WRITES=1`.
 Edits are limited to watchlists: a manual portfolio's positions carry lots and
 transactions, which removing a position would delete.
 
@@ -76,6 +77,7 @@ All environment variables are optional — see [`.env.example`](.env.example):
 | `YAHOO_FINANCE_REQUEST_TIMEOUT_MS` | `30000` | Per-request timeout, body included.                                                      |
 | `YAHOO_FINANCE_COOKIE`             | –       | Use this browser cookie instead of the automatic handshake; the crumb is fetched for it. |
 | `YAHOO_FINANCE_CRUMB`              | –       | Rarely needed: a crumb is derived from the cookie, and replaced if Yahoo rejects it.     |
+| `YAHOO_FINANCE_ALLOW_WRITES`       | –       | `1` registers the watchlist tools that change the account (signed-in cookie only).       |
 
 > **HTTP 429.** Yahoo answers 429 for two reasons. One is a burst limit: wait,
 > and keep `YAHOO_FINANCE_CONCURRENCY` low when fetching many tickers. The other

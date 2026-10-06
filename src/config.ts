@@ -9,12 +9,21 @@ const ConfigSchema = z.object({
   // derived from it unless supplied, and re-derived if Yahoo rejects it.
   cookie: z.string().optional(),
   crumb: z.string().optional(),
+  // Registers the watchlist write tools. Bastion's per-profile write toggle.
+  allowWrites: z.boolean().default(false),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;
 
 const isTruthy = (value: string | undefined): boolean =>
   value === "1" || value?.toLowerCase() === "true";
+
+// Bastion writes "1" and "0"; unset falls through to the schema default.
+const parseBool = (value: string | undefined): boolean | undefined => {
+  const t = value?.trim();
+  if (!t) return undefined;
+  return ["1", "true", "yes", "on"].includes(t.toLowerCase());
+};
 
 const parseIntOpt = (value: string | undefined): number | undefined => {
   if (value === undefined || value.trim() === "") return undefined;
@@ -29,4 +38,5 @@ export const loadConfig = (env: NodeJS.ProcessEnv = process.env): Config =>
     requestTimeoutMs: parseIntOpt(env.YAHOO_FINANCE_REQUEST_TIMEOUT_MS),
     cookie: env.YAHOO_FINANCE_COOKIE || undefined,
     crumb: env.YAHOO_FINANCE_CRUMB || undefined,
+    allowWrites: parseBool(env.YAHOO_FINANCE_ALLOW_WRITES),
   });

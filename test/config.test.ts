@@ -11,6 +11,7 @@ describe("loadConfig", () => {
       requestTimeoutMs: 30_000,
       cookie: undefined,
       crumb: undefined,
+      allowWrites: false,
     });
   });
 
@@ -33,5 +34,19 @@ describe("loadConfig", () => {
     const config = loadConfig({ YAHOO_FINANCE_CONCURRENCY: "", YAHOO_FINANCE_COOKIE: "" });
     expect(config.concurrency).toBe(4);
     expect(config.cookie).toBeUndefined();
+  });
+
+  // Bastion's write toggle sends "1" and "0"; people type the other spellings.
+  it.each([
+    ["1", true],
+    ["true", true],
+    ["yes", true],
+    ["on", true],
+    ["0", false],
+    ["false", false],
+    ["off", false],
+    ["", false],
+  ])("reads YAHOO_FINANCE_ALLOW_WRITES=%j as %s", (value, expected) => {
+    expect(loadConfig({ YAHOO_FINANCE_ALLOW_WRITES: value }).allowWrites).toBe(expected);
   });
 });

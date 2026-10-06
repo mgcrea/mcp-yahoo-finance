@@ -55,9 +55,14 @@ const pick = (lists: Portfolio[], pfId: string, fallback: Portfolio): Portfolio 
 /**
  * Tools that read and edit the signed-in account's watchlists. Registered only
  * when YAHOO_FINANCE_COOKIE carries Yahoo's login cookie — anonymously these
- * endpoints have no account to act on.
+ * endpoints have no account to act on. The tools that change the account also
+ * need YAHOO_FINANCE_ALLOW_WRITES, so a read-only profile never sees them.
  */
-export const registerWatchlistTools = (server: McpServer, client: YahooClient): void => {
+export const registerWatchlistTools = (
+  server: McpServer,
+  client: YahooClient,
+  { allowWrites }: { allowWrites: boolean },
+): void => {
   server.registerTool(
     "yahoo_list_watchlists",
     {
@@ -71,6 +76,8 @@ export const registerWatchlistTools = (server: McpServer, client: YahooClient): 
     },
     async () => wrap(async () => ((await client.portfolios()).portfolios ?? []).map(toWatchlist)),
   );
+
+  if (!allowWrites) return;
 
   server.registerTool(
     "yahoo_create_watchlist",

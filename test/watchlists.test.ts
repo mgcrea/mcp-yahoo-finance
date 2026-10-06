@@ -37,7 +37,7 @@ const holdings = (): Portfolio => ({
   positions: [{ posId: "pos_0", symbol: "MSFT", sortOrder: 0 }],
 });
 
-const account = (overrides: Partial<YahooClient> = {}) => {
+const account = (overrides: Partial<YahooClient> = {}, allowWrites = true) => {
   const client = {
     signedIn: true,
     portfolios: vi.fn().mockResolvedValue({
@@ -50,7 +50,7 @@ const account = (overrides: Partial<YahooClient> = {}) => {
     ...overrides,
   };
   const { server, tools } = fakeServer();
-  registerTools(server as never, client as unknown as YahooClient);
+  registerTools(server as never, client as unknown as YahooClient, { allowWrites });
   const call = async (name: string, args: Record<string, unknown> = {}) =>
     parse(await tools.get(name)!.handler(args));
   return { client, tools, call };
@@ -74,6 +74,13 @@ describe("watchlist tool registration", () => {
       ...WRITE_TOOLS.slice(0, 3),
       "yahoo_list_watchlists",
       WRITE_TOOLS[3],
+    ]);
+  });
+
+  it("keeps the write tools off until YAHOO_FINANCE_ALLOW_WRITES turns them on", () => {
+    const { tools } = account({}, false);
+    expect([...tools.keys()].filter((n) => n.includes("watchlist"))).toEqual([
+      "yahoo_list_watchlists",
     ]);
   });
 
