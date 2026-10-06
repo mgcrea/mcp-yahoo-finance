@@ -12,6 +12,8 @@ import { normalizeTicker } from "#/lib/ticker";
 export type { Logger } from "#/client/session";
 
 const HOST = "https://query2.finance.yahoo.com";
+// Portfolio reads and writes go where finance.yahoo.com's own page sends them.
+const PORTFOLIO_HOST = "https://query1.finance.yahoo.com";
 
 export type YahooClientOptions = {
   config: Config;
@@ -22,7 +24,21 @@ export type YahooClientOptions = {
 type RequestOptions = {
   query?: Record<string, unknown>;
   needsCrumb?: boolean;
+  host?: string;
+  method?: "GET" | "POST" | "PUT" | "DELETE";
+  body?: unknown;
 };
+
+/** One list on the account — a watchlist or a manual portfolio. */
+export type Portfolio = {
+  pfId: string;
+  pfName?: string;
+  pfType?: string;
+  positions?: { posId: string; symbol: string; sortOrder?: number }[];
+  [key: string]: unknown;
+};
+
+export type PortfolioOperation = { operation: string; [key: string]: unknown };
 
 type OHLCV = {
   open?: (number | null)[];
@@ -86,6 +102,10 @@ const unwrapEnvelope = (json: unknown, rootKey: string, res: Response): unknown 
 const rateLimitMessage = (status: number, fallback: string): string =>
   status === 429 ? RATE_LIMIT_MESSAGE : fallback;
 
+// Yahoo's `T` cookie is the login one; without it a cookie is just a browser id.
+const hasLoginCookie = (cookie: string | undefined): boolean =>
+  cookie !== undefined && /(?:^|;\s*)T=/.test(cookie);
+
 // Every error thrown below carries either `status` or `code`/message, so the
 // retry decision can be made from the error alone (no out-of-band signal).
 const isCrumbError = (err: unknown): boolean => {
@@ -104,6 +124,8 @@ export class YahooClient {
   private readonly logger: Logger | undefined;
   private readonly userAgent = DEFAULT_USER_AGENT;
   private readonly manualAuth: boolean;
+  /** Whether the supplied cookie belongs to a signed-in Yahoo account. */
+  readonly signedIn: boolean;
 
   constructor(opts: YahooClientOptions) {
     this.fetchImpl = limitFetch(opts.fetch ?? chromeFetch, {
@@ -112,6 +134,7 @@ export class YahooClient {
     });
     this.logger = opts.logger;
     this.manualAuth = Boolean(opts.config.cookie);
+    this.signedIn = hasLoginCookie(opts.config.cookie);
     this.session = new CrumbSession({
       fetch: this.fetchImpl,
       ...(opts.logger ? { logger: opts.logger } : {}),
@@ -130,15 +153,19 @@ export class YahooClient {
       } else {
         await this.session.ensureCookies();
       }
-      const url = `${HOST}${path}${buildQuery(query)}`;
-      this.logger?.debug?.(`[yahoo] GET ${url}`);
+      const url = `${opts.host ?? HOST}${path}${buildQuery(query)}`;
+      const method = opts.method ?? "GET";
+      this.logger?.debug?.(`[yahoo] ${method} ${url}`);
+      const hasBody = opts.body !== undefined;
       const res = await this.fetchImpl(url, {
-        method: "GET",
+        method,
         headers: {
           "user-agent": this.userAgent,
           accept: "application/json",
           cookie: await this.session.cookieHeader(url),
+          ...(hasBody ? { "content-type": "application/json" } : {}),
         },
+        ...(hasBody ? { body: JSON.stringify(opts.body) } : {}),
       });
       const text = await res.text();
       let json: unknown;
@@ -235,5 +262,49 @@ export class YahooClient {
       "timeseries",
       { query: params, needsCrumb: true },
     ).then((r) => (Array.isArray(r) ? r : ((r as { result?: unknown[] })?.result ?? [])));
+  }
+
+  /** Every list on the signed-in account, plus the `userId` that writes need. */
+  portfolios(): Promise<{
+    userId?: string;
+    hasMigratedToNewModel?: boolean;
+    portfolios?: Portfolio[];
+  }> {
+    return this.request<unknown[]>("/v7/finance/desktop/portfolio/all", "finance", {
+      host: PORTFOLIO_HOST,
+      needsCrumb: true,
+    }).then((arr) => (Array.isArray(arr) ? (arr[0] ?? {}) : {}));
+  }
+
+  /**
+   * Apply operations to one list, or create a list when `pfId` is omitted.
+   * Returns the lists Yahoo sends back, the affected one included.
+   */
+  updatePortfolio(args: {
+    pfId?: string;
+    userId: string;
+    operations: PortfolioOperation[];
+  }): Promise<Portfolio[]> {
+    const { pfId, userId, operations } = args;
+    return this.request<Portfolio[] | null>("/v6/finance/portfolio/update", "finance", {
+      host: PORTFOLIO_HOST,
+      needsCrumb: true,
+      method: pfId ? "PUT" : "POST",
+      query: pfId ? { action: "update", pfId, userId } : { method: "create", userId },
+      body: {
+        operations,
+        parameters: { fullResponse: true, ...(pfId ? { pfId } : {}), userId, userIdType: "guid" },
+      },
+    }).then((r) => r ?? []);
+  }
+
+  /** Delete one list. */
+  async deletePortfolio(pfId: string, userId: string): Promise<void> {
+    await this.request("/v6/finance/portfolio", "finance", {
+      host: PORTFOLIO_HOST,
+      needsCrumb: true,
+      method: "DELETE",
+      query: { pfId, userId },
+    });
   }
 }
