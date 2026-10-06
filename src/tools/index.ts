@@ -9,6 +9,7 @@ import { registerNewsTools } from "#/tools/news";
 import { registerOptionTools } from "#/tools/options";
 import { registerPriceTools } from "#/tools/prices";
 import { registerRecommendationTools } from "#/tools/recommendations";
+import { registerTransactionTools } from "#/tools/transactions";
 import { registerWatchlistTools } from "#/tools/watchlists";
 
 export type RegisterToolsOptions = {
@@ -30,5 +31,8 @@ export const registerTools = (
   registerOptionTools(server, client);
   registerRecommendationTools(server, client);
   if (client.manualAuth) registerAuthTools(server, client, { allowWrites });
-  if (client.signedIn) registerWatchlistTools(server, client, { allowWrites });
+  if (client.signedIn) {
+    registerWatchlistTools(server, client, { allowWrites });
+    registerTransactionTools(server, client, { allowWrites });
+  }
 };

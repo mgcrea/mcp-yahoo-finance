@@ -50,40 +50,48 @@ pnpm start
 | `yahoo_get_option_chain`            | Calls or puts for an expiration date. `strike_window_pct` keeps strikes near spot; `fields` picks columns.   |
 | `yahoo_get_recommendations`         | Analyst recommendation trend, or upgrades/downgrades (deduped per firm).                                     |
 
-### Watchlists (signed-in cookie only)
+### Watchlists and portfolios (signed-in cookie only)
 
-`yahoo_list_watchlists` appears only when `YAHOO_FINANCE_COOKIE` holds a signed-in session — the
+These appear only when `YAHOO_FINANCE_COOKIE` holds a signed-in session — the
 `A3`, `T` and `Y` cookies from a finance.yahoo.com tab where you are logged in.
-The four that change the account also need `YAHOO_FINANCE_ALLOW_WRITES=1`.
-Edits are limited to watchlists: a manual portfolio's positions carry lots and
-transactions, which removing a position would delete.
+The two reads need nothing more; the tools that change the account also need
+`YAHOO_FINANCE_ALLOW_WRITES=1`.
+
+In a manual portfolio a position carries lots and transactions, and removing the
+position deletes them. So removing such a position, or deleting a portfolio that
+holds any, is refused unless the call passes `delete_history: true`, and the
+reply lists what went.
 
 Yahoo does not say when a login cookie expires. Once it does, the account tools
 fail with an error naming `YAHOO_FINANCE_COOKIE`, and `yahoo_auth_status` (registered
 whenever a cookie is set) checks it live: it lists the account and reports
 `signedIn`, the cookie names it found (never their values), and what to do next.
 
-| Tool                          | Description                                                                |
-| ----------------------------- | -------------------------------------------------------------------------- |
-| `yahoo_auth_status`           | Whether the cookie is still signed in, checked live against the account.   |
-| `yahoo_list_watchlists`       | Every watchlist and portfolio on the account, with its `pfId` and symbols. |
-| `yahoo_create_watchlist`      | Create a watchlist, optionally with its first symbols.                     |
-| `yahoo_add_to_watchlist`      | Append symbols to a watchlist; those already on it are skipped.            |
-| `yahoo_remove_from_watchlist` | Remove symbols from a watchlist.                                           |
-| `yahoo_delete_watchlist`      | Delete a watchlist, returning its name and symbols so it can be recreated. |
+| Tool                                 | Description                                                                          |
+| ------------------------------------ | ------------------------------------------------------------------------------------ |
+| `yahoo_auth_status`                  | Whether the cookie is still signed in, checked live against the account.             |
+| `yahoo_list_watchlists`              | Every watchlist and portfolio on the account, with its `pfId` and symbols.           |
+| `yahoo_create_watchlist`             | Create a watchlist, or a portfolio with `type: "MANUAL_PORTFOLIO"`.                  |
+| `yahoo_add_to_watchlist`             | Append symbols to a watchlist or portfolio; those already on it are skipped.         |
+| `yahoo_remove_from_watchlist`        | Remove symbols. Positions with lots or transactions need `delete_history: true`.     |
+| `yahoo_delete_watchlist`             | Delete a list, returning its name and symbols so it can be recreated.                |
+| `yahoo_get_portfolio_transactions`   | The buys and sells recorded for a symbol in a portfolio.                             |
+| `yahoo_add_portfolio_transaction`    | Record a buy or sell (date, quantity, price, commission); adds the symbol if needed. |
+| `yahoo_update_portfolio_transaction` | Change a recorded trade; fields not given are kept.                                  |
+| `yahoo_delete_portfolio_transaction` | Delete a recorded trade, returning it so it can be recorded again.                   |
 
 ## Configuration
 
 All environment variables are optional — see [`.env.example`](.env.example):
 
-| Variable                           | Default | Purpose                                                                                  |
-| ---------------------------------- | ------- | ---------------------------------------------------------------------------------------- |
-| `YAHOO_FINANCE_DEBUG`              | –       | Verbose stderr logging.                                                                  |
-| `YAHOO_FINANCE_CONCURRENCY`        | `4`     | Max in-flight requests to Yahoo (avoid 429s).                                            |
-| `YAHOO_FINANCE_REQUEST_TIMEOUT_MS` | `30000` | Per-request timeout, body included.                                                      |
-| `YAHOO_FINANCE_COOKIE`             | –       | Use this browser cookie instead of the automatic handshake; the crumb is fetched for it. |
-| `YAHOO_FINANCE_CRUMB`              | –       | Rarely needed: a crumb is derived from the cookie, and replaced if Yahoo rejects it.     |
-| `YAHOO_FINANCE_ALLOW_WRITES`       | –       | `1` registers the watchlist tools that change the account (signed-in cookie only).       |
+| Variable                           | Default | Purpose                                                                                          |
+| ---------------------------------- | ------- | ------------------------------------------------------------------------------------------------ |
+| `YAHOO_FINANCE_DEBUG`              | –       | Verbose stderr logging.                                                                          |
+| `YAHOO_FINANCE_CONCURRENCY`        | `4`     | Max in-flight requests to Yahoo (avoid 429s).                                                    |
+| `YAHOO_FINANCE_REQUEST_TIMEOUT_MS` | `30000` | Per-request timeout, body included.                                                              |
+| `YAHOO_FINANCE_COOKIE`             | –       | Use this browser cookie instead of the automatic handshake; the crumb is fetched for it.         |
+| `YAHOO_FINANCE_CRUMB`              | –       | Rarely needed: a crumb is derived from the cookie, and replaced if Yahoo rejects it.             |
+| `YAHOO_FINANCE_ALLOW_WRITES`       | –       | `1` registers the watchlist and portfolio tools that change the account (signed-in cookie only). |
 
 > **HTTP 429.** Yahoo answers 429 for two reasons. One is a burst limit: wait,
 > and keep `YAHOO_FINANCE_CONCURRENCY` low when fetching many tickers. The other
