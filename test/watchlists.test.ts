@@ -34,7 +34,10 @@ const holdings = (): Portfolio => ({
   pfId: "p_1",
   pfName: "Portfolio",
   pfType: "MANUAL_PORTFOLIO",
-  positions: [{ posId: "pos_0", symbol: "MSFT", sortOrder: 0 }],
+  positions: [
+    { posId: "pos_0", symbol: "MSFT", sortOrder: 0, totalLotCount: 1, totalTransactionsCount: 1 },
+    { posId: "pos_1", symbol: "IBM", sortOrder: 1, totalLotCount: 0, totalTransactionsCount: 0 },
+  ],
 });
 
 const account = (overrides: Partial<YahooClient> = {}, allowWrites = true) => {
@@ -101,7 +104,7 @@ describe("yahoo_list_watchlists", () => {
     const { data, isError } = await account().call("yahoo_list_watchlists");
     expect(isError).toBe(false);
     expect(data).toEqual([
-      { pfId: "p_1", name: "Portfolio", type: "MANUAL_PORTFOLIO", symbols: ["MSFT"] },
+      { pfId: "p_1", name: "Portfolio", type: "MANUAL_PORTFOLIO", symbols: ["MSFT", "IBM"] },
       { pfId: "p_3", name: "Watch", type: "WATCHLIST", symbols: ["AAPL", "NVDA"] },
     ]);
   });
@@ -144,15 +147,16 @@ describe("yahoo_add_to_watchlist", () => {
     expect(data).toMatchObject({ skipped: ["AAPL"] });
   });
 
-  it("refuses a manual portfolio, whose positions carry lots", async () => {
-    const { client, call } = account();
-    const { data, isError } = await call("yahoo_add_to_watchlist", {
+  it("adds to a manual portfolio as well, as a position with no lots yet", async () => {
+    const updatePortfolio = vi.fn().mockResolvedValue([holdings()]);
+    const { call } = account({ updatePortfolio });
+    const { isError } = await call("yahoo_add_to_watchlist", { pfId: "p_1", symbols: ["TSLA"] });
+    expect(isError).toBe(false);
+    expect(updatePortfolio).toHaveBeenCalledWith({
       pfId: "p_1",
-      symbols: ["TSLA"],
+      userId: "U1",
+      operations: [{ operation: "position_insert", symbol: "TSLA", sortOrder: 2 }],
     });
-    expect(isError).toBe(true);
-    expect(data.error).toMatch(/p_1 is a MANUAL_PORTFOLIO/);
-    expect(client.updatePortfolio).not.toHaveBeenCalled();
   });
 
   it("names the lists that exist when the pfId is unknown", async () => {
@@ -189,14 +193,47 @@ describe("yahoo_remove_from_watchlist", () => {
     });
   });
 
-  it("refuses a manual portfolio, where removing a position deletes its lots", async () => {
-    const { client, call } = account();
+  it("removes a portfolio position that holds no lots or transactions", async () => {
+    const updatePortfolio = vi.fn().mockResolvedValue([holdings()]);
+    const { call } = account({ updatePortfolio });
     const { isError } = await call("yahoo_remove_from_watchlist", {
       pfId: "p_1",
-      symbols: ["MSFT"],
+      symbols: ["IBM"],
+    });
+    expect(isError).toBe(false);
+    expect(updatePortfolio).toHaveBeenCalledWith({
+      pfId: "p_1",
+      userId: "U1",
+      operations: [{ operation: "position_delete", posId: "pos_1" }],
+    });
+  });
+
+  it("refuses, changing nothing, when a position has history and delete_history is unset", async () => {
+    const { client, call } = account();
+    const { data, isError } = await call("yahoo_remove_from_watchlist", {
+      pfId: "p_1",
+      symbols: ["IBM", "MSFT"],
     });
     expect(isError).toBe(true);
+    expect(data.error).toMatch(/MSFT \(1 lot, 1 transaction\)/);
+    expect(data.error).toMatch(/delete_history: true/);
     expect(client.updatePortfolio).not.toHaveBeenCalled();
+  });
+
+  it("removes positions with history when delete_history is true, and says what went", async () => {
+    const updatePortfolio = vi.fn().mockResolvedValue([holdings()]);
+    const { call } = account({ updatePortfolio });
+    const { data } = await call("yahoo_remove_from_watchlist", {
+      pfId: "p_1",
+      symbols: ["MSFT"],
+      delete_history: true,
+    });
+    expect(updatePortfolio).toHaveBeenCalledWith({
+      pfId: "p_1",
+      userId: "U1",
+      operations: [{ operation: "position_delete", posId: "pos_0" }],
+    });
+    expect(data.deletedHistory).toEqual([{ symbol: "MSFT", lots: 1, transactions: 1 }]);
   });
 });
 
@@ -242,6 +279,25 @@ describe("yahoo_create_watchlist", () => {
   });
 });
 
+describe("yahoo_create_watchlist with a type", () => {
+  it("creates a manual portfolio when asked for one", async () => {
+    const created: Portfolio = { pfId: "p_6", pfName: "Bourso", pfType: "MANUAL_PORTFOLIO" };
+    const updatePortfolio = vi.fn().mockResolvedValue([holdings(), watch(), created]);
+    const { call } = account({ updatePortfolio });
+
+    const { data } = await call("yahoo_create_watchlist", {
+      name: "Bourso",
+      type: "MANUAL_PORTFOLIO",
+    });
+    expect(updatePortfolio.mock.calls[0]![0].operations[0]).toMatchObject({
+      operation: "portfolio_update",
+      pfName: "Bourso",
+      pfType: "MANUAL_PORTFOLIO",
+    });
+    expect(data).toEqual({ pfId: "p_6", name: "Bourso", type: "MANUAL_PORTFOLIO", symbols: [] });
+  });
+});
+
 describe("yahoo_delete_watchlist", () => {
   it("deletes the list and returns what it held, so it can be recreated", async () => {
     const { client, call } = account();
@@ -252,10 +308,26 @@ describe("yahoo_delete_watchlist", () => {
     });
   });
 
-  it("refuses to delete a manual portfolio", async () => {
+  it("refuses a portfolio holding lots or transactions unless delete_history is true", async () => {
     const { client, call } = account();
-    const { isError } = await call("yahoo_delete_watchlist", { pfId: "p_1" });
+    const { data, isError } = await call("yahoo_delete_watchlist", { pfId: "p_1" });
     expect(isError).toBe(true);
+    expect(data.error).toMatch(/MSFT \(1 lot, 1 transaction\)/);
     expect(client.deletePortfolio).not.toHaveBeenCalled();
+  });
+
+  it("deletes a portfolio with history when delete_history is true, and says what went", async () => {
+    const { client, call } = account();
+    const { data } = await call("yahoo_delete_watchlist", { pfId: "p_1", delete_history: true });
+    expect(client.deletePortfolio).toHaveBeenCalledWith("p_1", "U1");
+    expect(data).toEqual({
+      deleted: {
+        pfId: "p_1",
+        name: "Portfolio",
+        type: "MANUAL_PORTFOLIO",
+        symbols: ["MSFT", "IBM"],
+      },
+      deletedHistory: [{ symbol: "MSFT", lots: 1, transactions: 1 }],
+    });
   });
 });
