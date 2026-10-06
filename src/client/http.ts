@@ -52,11 +52,44 @@ export type Portfolio = {
   pfId: string;
   pfName?: string;
   pfType?: string;
-  positions?: { posId: string; symbol: string; sortOrder?: number }[];
+  positions?: {
+    posId: string;
+    symbol: string;
+    sortOrder?: number;
+    totalLotCount?: number;
+    totalTransactionsCount?: number;
+  }[];
   [key: string]: unknown;
 };
 
 export type PortfolioOperation = { operation: string; [key: string]: unknown };
+
+/** One trade as Yahoo stores it. Dates are `YYYYMMDD`. */
+export type Transaction = {
+  id: string;
+  type?: string;
+  date?: string;
+  quantity?: number;
+  pricePerShare?: number;
+  commission?: number;
+  totalValue?: number;
+  comment?: string;
+  [key: string]: unknown;
+};
+
+export type TransactionInput = {
+  pfId: string;
+  positionId: string;
+  id?: string;
+  type: string;
+  date: string;
+  quantity: number;
+  pricePerShare: number;
+  commission: number;
+  comment: string;
+};
+
+const TRANSACTION_PATH = "/ws/portfolio-api/v1/portfolio/transaction";
 
 type OHLCV = {
   open?: (number | null)[];
@@ -365,6 +398,43 @@ export class YahooClient {
       account: true,
       method: "DELETE",
       query: { pfId, userId },
+    });
+  }
+
+  /** The trades recorded on one position of a manual portfolio. */
+  transactions(pfId: string, positionId: string): Promise<Transaction[]> {
+    return this.request<{ transactions?: Transaction[] }>(`${TRANSACTION_PATH}s`, "__none__", {
+      host: PORTFOLIO_HOST,
+      needsCrumb: true,
+      account: true,
+      query: { pfId, positionId, category: "trades" },
+    }).then((r) => r?.transactions ?? []);
+  }
+
+  /**
+   * Record a trade, or edit one when `id` is given. Yahoo answers with the
+   * position's trades and names the one it just wrote in `newTransactionMeta`.
+   */
+  saveTransaction(
+    transaction: TransactionInput,
+  ): Promise<{ newTransactionMeta?: { id?: string }; transactions?: Transaction[] }> {
+    return this.request(TRANSACTION_PATH, "__none__", {
+      host: PORTFOLIO_HOST,
+      needsCrumb: true,
+      account: true,
+      method: transaction.id ? "PUT" : "POST",
+      body: { transaction },
+    });
+  }
+
+  /** Delete one trade. */
+  async deleteTransaction(args: { pfId: string; positionId: string; id: string }): Promise<void> {
+    await this.request(TRANSACTION_PATH, "__none__", {
+      host: PORTFOLIO_HOST,
+      needsCrumb: true,
+      account: true,
+      method: "DELETE",
+      query: args,
     });
   }
 }

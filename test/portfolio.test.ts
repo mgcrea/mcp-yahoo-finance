@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { YahooCookieRejectedError } from "#/client/errors";
 import { YahooClient } from "#/client/http";
 import { loadConfig } from "#/config";
 
@@ -102,5 +103,120 @@ describe("YahooClient.signedIn", () => {
     [{ YAHOO_FINANCE_COOKIE: "T=login" }, true],
   ])("is %o → %s, keyed on Yahoo's T login cookie", (env, expected) => {
     expect(new YahooClient({ config: loadConfig(env) }).signedIn).toBe(expected);
+  });
+});
+
+// Shapes as Yahoo answered them on 2026-10-06, against a throwaway portfolio.
+const BUY = {
+  id: "transaction_941a",
+  positionId: "pos_0",
+  lotId: "lot_941a",
+  symbol: "AAPL",
+  type: "BUY",
+  date: "20261001",
+  quantity: 10,
+  pricePerShare: 250.5,
+  commission: 1,
+  totalValue: 2506,
+  comment: "",
+};
+
+describe("YahooClient transaction endpoints", () => {
+  it("reads a position's trades", async () => {
+    const { client, calls } = recordingClient(() => ({ transactions: [BUY], totalCount: 1 }));
+
+    expect(await client.transactions("p_8", "pos_0")).toEqual([BUY]);
+    expect(calls[0]!.method).toBe("GET");
+    expect(calls[0]!.url.host).toBe("query1.finance.yahoo.com");
+    expect(calls[0]!.url.pathname).toBe("/ws/portfolio-api/v1/portfolio/transactions");
+    expect(params(calls[0]!.url)).toEqual({
+      pfId: "p_8",
+      positionId: "pos_0",
+      category: "trades",
+      crumb: "c1",
+    });
+  });
+
+  it("adds a transaction with a POST and edits one with a PUT", async () => {
+    const reply = { newTransactionMeta: { id: "transaction_941a" }, transactions: [BUY] };
+    const { client, calls } = recordingClient(() => reply);
+    const transaction = {
+      pfId: "p_8",
+      positionId: "pos_0",
+      type: "BUY",
+      date: "20261001",
+      quantity: 10,
+      pricePerShare: 250.5,
+      commission: 1,
+      comment: "",
+    };
+
+    expect(await client.saveTransaction(transaction)).toEqual(reply);
+    await client.saveTransaction({ ...transaction, id: "transaction_941a" });
+
+    expect(calls.map((c) => c.method)).toEqual(["POST", "PUT"]);
+    expect(calls[0]!.url.pathname).toBe("/ws/portfolio-api/v1/portfolio/transaction");
+    expect(calls[0]!.contentType).toBe("application/json");
+    expect(calls[0]!.body).toEqual({ transaction });
+    expect(calls[1]!.body).toEqual({ transaction: { ...transaction, id: "transaction_941a" } });
+  });
+
+  it("deletes a transaction with a DELETE naming it in the query", async () => {
+    const { client, calls } = recordingClient(() => ({ transactions: [] }));
+
+    await client.deleteTransaction({ pfId: "p_8", positionId: "pos_0", id: "transaction_941a" });
+    expect(calls[0]!.method).toBe("DELETE");
+    expect(params(calls[0]!.url)).toEqual({
+      pfId: "p_8",
+      positionId: "pos_0",
+      id: "transaction_941a",
+      crumb: "c1",
+    });
+    expect(calls[0]!.body).toBeUndefined();
+  });
+});
+
+describe("YahooClient transaction endpoints with a signed-out cookie", () => {
+  // What Yahoo answers an account endpoint once the T login has expired.
+  const signedOut = () =>
+    new Response(
+      JSON.stringify({
+        finance: {
+          result: null,
+          error: {
+            code: "Forbidden",
+            description: "Unable to authenticate user against member profile.",
+          },
+        },
+      }),
+      { status: 403 },
+    );
+  const client = () => {
+    const fetch = (async (input: string | URL | Request) =>
+      new URL(String(input)).pathname === "/v1/test/getcrumb"
+        ? new Response("c1")
+        : signedOut()) as typeof globalThis.fetch;
+    return new YahooClient({ config: loadConfig(SIGNED_IN), fetch });
+  };
+  const trade = {
+    pfId: "p_8",
+    positionId: "pos_0",
+    type: "BUY",
+    date: "20261001",
+    quantity: 1,
+    pricePerShare: 1,
+    commission: 0,
+    comment: "",
+  };
+
+  it.each([
+    ["transactions", () => client().transactions("p_8", "pos_0")],
+    ["saveTransaction", () => client().saveTransaction(trade)],
+    [
+      "deleteTransaction",
+      () => client().deleteTransaction({ pfId: "p_8", positionId: "pos_0", id: "t" }),
+    ],
+  ])("%s says the login expired, as the portfolio calls do", async (_name, call) => {
+    await expect(call()).rejects.toBeInstanceOf(YahooCookieRejectedError);
   });
 });
