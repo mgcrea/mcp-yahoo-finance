@@ -50,6 +50,21 @@ pnpm start
 | `yahoo_get_option_chain`            | Calls or puts for an expiration date. `strike_window_pct` keeps strikes near spot; `fields` picks columns.   |
 | `yahoo_get_recommendations`         | Analyst recommendation trend, or upgrades/downgrades (deduped per firm).                                     |
 
+### Watchlists (signed-in cookie only)
+
+These appear only when `YAHOO_FINANCE_COOKIE` holds a signed-in session — the
+`A3`, `T` and `Y` cookies from a finance.yahoo.com tab where you are logged in.
+Edits are limited to watchlists: a manual portfolio's positions carry lots and
+transactions, which removing a position would delete.
+
+| Tool                          | Description                                                                |
+| ----------------------------- | -------------------------------------------------------------------------- |
+| `yahoo_list_watchlists`       | Every watchlist and portfolio on the account, with its `pfId` and symbols. |
+| `yahoo_create_watchlist`      | Create a watchlist, optionally with its first symbols.                     |
+| `yahoo_add_to_watchlist`      | Append symbols to a watchlist; those already on it are skipped.            |
+| `yahoo_remove_from_watchlist` | Remove symbols from a watchlist.                                           |
+| `yahoo_delete_watchlist`      | Delete a watchlist, returning its name and symbols so it can be recreated. |
+
 ## Configuration
 
 All environment variables are optional — see [`.env.example`](.env.example):

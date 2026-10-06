@@ -8,6 +8,7 @@ import { registerNewsTools } from "#/tools/news";
 import { registerOptionTools } from "#/tools/options";
 import { registerPriceTools } from "#/tools/prices";
 import { registerRecommendationTools } from "#/tools/recommendations";
+import { registerWatchlistTools } from "#/tools/watchlists";
 
 /** Register every Yahoo Finance tool on the MCP server. */
 export const registerTools = (server: McpServer, client: YahooClient): void => {
@@ -18,4 +19,5 @@ export const registerTools = (server: McpServer, client: YahooClient): void => {
   registerHolderTools(server, client);
   registerOptionTools(server, client);
   registerRecommendationTools(server, client);
+  if (client.signedIn) registerWatchlistTools(server, client);
 };
