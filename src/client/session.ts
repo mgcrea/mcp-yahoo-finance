@@ -60,9 +60,10 @@ export class CrumbSession {
     if (opts.crumb) this.crumb = opts.crumb;
     if (opts.cookie) {
       // Seed the jar so the very first request already carries the override.
+      // Scope it to all of yahoo.com: it is copied from a finance.yahoo.com tab,
+      // but the API answers on query1/query2, which a host-only cookie misses.
       for (const part of opts.cookie.split(/;\s*/)) {
-        const cookie = Cookie.parse(part);
-        if (cookie) void this.jar.setCookie(cookie, CRUMB_SEED_URL);
+        if (part) this.jar.setCookieSync(`${part}; Domain=yahoo.com; Path=/`, CRUMB_SEED_URL);
       }
       // Trust the supplied cookie — don't run the automatic warm-up.
       this.cookiesReady = true;
