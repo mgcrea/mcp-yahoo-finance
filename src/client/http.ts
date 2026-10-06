@@ -1,6 +1,8 @@
 import {
   MANUAL_AUTH_REJECTED_MESSAGE,
   RATE_LIMIT_MESSAGE,
+  SIGNED_OUT_MESSAGE,
+  YahooCookieRejectedError,
   YahooFinanceApiError,
 } from "#/client/errors";
 import { limitFetch } from "#/client/limit";
@@ -27,6 +29,22 @@ type RequestOptions = {
   host?: string;
   method?: "GET" | "POST" | "PUT" | "DELETE";
   body?: unknown;
+  /** Acts on the signed-in account, so a 403 means the login is gone. */
+  account?: boolean;
+};
+
+/** What {@link YahooClient.authStatus} found out about YAHOO_FINANCE_COOKIE. */
+export type AuthStatus = {
+  /** Yahoo accepted the login just now. */
+  signedIn: boolean;
+  /** The cookie carries `T`, Yahoo's login cookie. */
+  loginCookie: boolean;
+  /** Names of the supplied cookies; their values stay out of the reply. */
+  cookies: string[];
+  /** How many watchlists and portfolios the account holds, when signed in. */
+  lists?: number;
+  /** What to do about it, when not signed in. */
+  action?: string;
 };
 
 /** One list on the account — a watchlist or a manual portfolio. */
@@ -106,6 +124,26 @@ const rateLimitMessage = (status: number, fallback: string): string =>
 const hasLoginCookie = (cookie: string | undefined): boolean =>
   cookie !== undefined && /(?:^|;\s*)T=/.test(cookie);
 
+const NO_LOGIN_COOKIE_ACTION =
+  "YAHOO_FINANCE_COOKIE has no T cookie, so it names a browser, not an account. Copy the whole " +
+  "cookie (A3, T and Y) from a finance.yahoo.com tab where you are signed in.";
+
+const cookieNames = (cookie: string | undefined): string[] =>
+  (cookie ?? "")
+    .split(/;\s*/)
+    .map((part) => part.split("=")[0]!.trim())
+    .filter(Boolean);
+
+// Keep Yahoo's own reason after ours: it tells a stale cookie from a new failure.
+const cookieRejected = (
+  message: string,
+  { message: reason, status, code }: YahooFinanceApiError,
+): YahooCookieRejectedError =>
+  new YahooCookieRejectedError(`${message} (Yahoo: ${reason})`, {
+    ...(status ? { status } : {}),
+    ...(code ? { code } : {}),
+  });
+
 // Every error thrown below carries either `status` or `code`/message, so the
 // retry decision can be made from the error alone (no out-of-band signal).
 const isCrumbError = (err: unknown): boolean => {
@@ -123,7 +161,9 @@ export class YahooClient {
   private readonly fetchImpl: typeof fetch;
   private readonly logger: Logger | undefined;
   private readonly userAgent = DEFAULT_USER_AGENT;
-  private readonly manualAuth: boolean;
+  /** Whether YAHOO_FINANCE_COOKIE replaces the anonymous handshake. */
+  readonly manualAuth: boolean;
+  private readonly cookieNames: string[];
   /** Whether the supplied cookie belongs to a signed-in Yahoo account. */
   readonly signedIn: boolean;
 
@@ -135,6 +175,7 @@ export class YahooClient {
     this.logger = opts.logger;
     this.manualAuth = Boolean(opts.config.cookie);
     this.signedIn = hasLoginCookie(opts.config.cookie);
+    this.cookieNames = cookieNames(opts.config.cookie);
     this.session = new CrumbSession({
       fetch: this.fetchImpl,
       ...(opts.logger ? { logger: opts.logger } : {}),
@@ -186,6 +227,9 @@ export class YahooClient {
     try {
       return await send();
     } catch (err) {
+      if (opts.account && err instanceof YahooFinanceApiError && err.status === 403) {
+        throw cookieRejected(SIGNED_OUT_MESSAGE, err);
+      }
       if (!opts.needsCrumb || !isCrumbError(err)) throw err;
       this.logger?.warn?.("[yahoo] crumb rejected — refreshing and retrying once");
       this.session.invalidate();
@@ -193,11 +237,7 @@ export class YahooClient {
         return await send();
       } catch (retryErr) {
         if (this.manualAuth && isCrumbError(retryErr)) {
-          const { message, status, code } = retryErr as YahooFinanceApiError;
-          throw new YahooFinanceApiError(`${MANUAL_AUTH_REJECTED_MESSAGE} (Yahoo: ${message})`, {
-            ...(status ? { status } : {}),
-            ...(code ? { code } : {}),
-          });
+          throw cookieRejected(MANUAL_AUTH_REJECTED_MESSAGE, retryErr as YahooFinanceApiError);
         }
         throw retryErr;
       }
@@ -264,6 +304,23 @@ export class YahooClient {
     ).then((r) => (Array.isArray(r) ? r : ((r as { result?: unknown[] })?.result ?? [])));
   }
 
+  /**
+   * Check YAHOO_FINANCE_COOKIE against Yahoo. The cookie header carries no
+   * expiry, so the only way to know a login still holds is to use it: list the
+   * account. A refused login is reported, not thrown; other failures still throw.
+   */
+  async authStatus(): Promise<AuthStatus> {
+    const base = { loginCookie: this.signedIn, cookies: this.cookieNames };
+    if (!this.signedIn) return { signedIn: false, ...base, action: NO_LOGIN_COOKIE_ACTION };
+    try {
+      const account = await this.portfolios();
+      return { signedIn: true, ...base, lists: account.portfolios?.length ?? 0 };
+    } catch (err) {
+      if (!(err instanceof YahooCookieRejectedError)) throw err;
+      return { signedIn: false, ...base, action: err.message };
+    }
+  }
+
   /** Every list on the signed-in account, plus the `userId` that writes need. */
   portfolios(): Promise<{
     userId?: string;
@@ -273,6 +330,7 @@ export class YahooClient {
     return this.request<unknown[]>("/v7/finance/desktop/portfolio/all", "finance", {
       host: PORTFOLIO_HOST,
       needsCrumb: true,
+      account: true,
     }).then((arr) => (Array.isArray(arr) ? (arr[0] ?? {}) : {}));
   }
 
@@ -289,6 +347,7 @@ export class YahooClient {
     return this.request<Portfolio[] | null>("/v6/finance/portfolio/update", "finance", {
       host: PORTFOLIO_HOST,
       needsCrumb: true,
+      account: true,
       method: pfId ? "PUT" : "POST",
       query: pfId ? { action: "update", pfId, userId } : { method: "create", userId },
       body: {
@@ -303,6 +362,7 @@ export class YahooClient {
     await this.request("/v6/finance/portfolio", "finance", {
       host: PORTFOLIO_HOST,
       needsCrumb: true,
+      account: true,
       method: "DELETE",
       query: { pfId, userId },
     });

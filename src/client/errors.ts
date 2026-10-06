@@ -13,6 +13,13 @@ export const MANUAL_AUTH_REJECTED_MESSAGE =
   "Yahoo Finance rejected YAHOO_FINANCE_COOKIE, even with a fresh crumb. Copy it again from " +
   "a browser session, or unset it to let the server handshake on its own.";
 
+// Thrown when an account endpoint answers 403: the crumb still works, since
+// Yahoo issues one to anonymous cookies too, but the `T` login has expired or
+// been signed out. Only a cookie copied from a signed-in tab brings it back.
+export const SIGNED_OUT_MESSAGE =
+  "Yahoo Finance no longer accepts the login in YAHOO_FINANCE_COOKIE: it expired or was " +
+  "signed out. Copy the cookie again from a finance.yahoo.com tab where you are signed in.";
+
 export class YahooFinanceApiError extends Error {
   override readonly name: string = "YahooFinanceApiError";
   readonly status: number | undefined;
@@ -25,6 +32,11 @@ export class YahooFinanceApiError extends Error {
     this.code = opts.code;
     this.details = opts.details;
   }
+}
+
+/** Thrown when Yahoo refuses YAHOO_FINANCE_COOKIE itself: a new copy is the only fix. */
+export class YahooCookieRejectedError extends YahooFinanceApiError {
+  override readonly name = "YahooCookieRejectedError";
 }
 
 /** Thrown when the cookie/crumb handshake with Yahoo cannot be completed. */

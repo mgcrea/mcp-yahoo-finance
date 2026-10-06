@@ -58,8 +58,14 @@ The four that change the account also need `YAHOO_FINANCE_ALLOW_WRITES=1`.
 Edits are limited to watchlists: a manual portfolio's positions carry lots and
 transactions, which removing a position would delete.
 
+Yahoo does not say when a login cookie expires. Once it does, the account tools
+fail with an error naming `YAHOO_FINANCE_COOKIE`, and `yahoo_auth_status` (registered
+whenever a cookie is set) checks it live: it lists the account and reports
+`signedIn`, the cookie names it found (never their values), and what to do next.
+
 | Tool                          | Description                                                                |
 | ----------------------------- | -------------------------------------------------------------------------- |
+| `yahoo_auth_status`           | Whether the cookie is still signed in, checked live against the account.   |
 | `yahoo_list_watchlists`       | Every watchlist and portfolio on the account, with its `pfId` and symbols. |
 | `yahoo_create_watchlist`      | Create a watchlist, optionally with its first symbols.                     |
 | `yahoo_add_to_watchlist`      | Append symbols to a watchlist; those already on it are skipped.            |

@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/server";
 
 import type { YahooClient } from "#/client/http";
+import { registerAuthTools } from "#/tools/auth";
 import { registerFinancialTools } from "#/tools/financials";
 import { registerHolderTools } from "#/tools/holders";
 import { registerInfoTools } from "#/tools/info";
@@ -28,5 +29,6 @@ export const registerTools = (
   registerHolderTools(server, client);
   registerOptionTools(server, client);
   registerRecommendationTools(server, client);
+  if (client.manualAuth) registerAuthTools(server, client, { allowWrites });
   if (client.signedIn) registerWatchlistTools(server, client, { allowWrites });
 };
