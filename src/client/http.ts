@@ -1,4 +1,8 @@
-import { RATE_LIMIT_MESSAGE, YahooFinanceApiError } from "#/client/errors";
+import {
+  MANUAL_AUTH_REJECTED_MESSAGE,
+  RATE_LIMIT_MESSAGE,
+  YahooFinanceApiError,
+} from "#/client/errors";
 import { limitFetch } from "#/client/limit";
 import { CrumbSession, DEFAULT_USER_AGENT, type Logger } from "#/client/session";
 import { chromeFetch } from "#/client/transport";
@@ -52,21 +56,30 @@ const buildQuery = (query: Record<string, unknown> | undefined): string => {
   return s ? `?${s}` : "";
 };
 
-/** Pull Yahoo's `{ <root>: { result, error } }` envelope, or throw on `error`. */
-const unwrapEnvelope = (json: unknown, rootKey: string): unknown => {
-  if (json && typeof json === "object") {
-    const root = (json as Record<string, unknown>)[rootKey];
-    if (root && typeof root === "object") {
-      const { result, error } = root as { result?: unknown; error?: unknown };
-      if (error) {
-        const e = error as { code?: string; description?: string };
-        const opts = e.code ? { code: e.code } : {};
-        throw new YahooFinanceApiError(e.description ?? e.code ?? "Yahoo Finance error", opts);
-      }
-      return result;
-    }
+type EnvelopeError = { code?: string; description?: string };
+
+const envelopeRoot = (json: unknown, key: string): { result?: unknown; error?: unknown } | null => {
+  if (!json || typeof json !== "object") return null;
+  const root = (json as Record<string, unknown>)[key];
+  return root && typeof root === "object" ? root : null;
+};
+
+/**
+ * Pull Yahoo's `{ <root>: { result, error } }` envelope, or throw on `error`.
+ * Auth and gateway errors arrive under `finance` whatever the endpoint, and
+ * HTTP/2 has no status text, so the status code is the last-resort message.
+ */
+const unwrapEnvelope = (json: unknown, rootKey: string, res: Response): unknown => {
+  const root = envelopeRoot(json, rootKey);
+  const error = (root?.error ?? envelopeRoot(json, "finance")?.error) as EnvelopeError | undefined;
+  if (error || !res.ok) {
+    const message = error?.description || error?.code || res.statusText || `HTTP ${res.status}`;
+    throw new YahooFinanceApiError(rateLimitMessage(res.status, message), {
+      ...(res.ok ? {} : { status: res.status }),
+      ...(error?.code ? { code: error.code } : {}),
+    });
   }
-  return json;
+  return root ? root.result : json;
 };
 
 // Turn Yahoo's terse 429 body into an actionable message.
@@ -90,6 +103,7 @@ export class YahooClient {
   private readonly fetchImpl: typeof fetch;
   private readonly logger: Logger | undefined;
   private readonly userAgent = DEFAULT_USER_AGENT;
+  private readonly manualAuth: boolean;
 
   constructor(opts: YahooClientOptions) {
     this.fetchImpl = limitFetch(opts.fetch ?? chromeFetch, {
@@ -97,6 +111,7 @@ export class YahooClient {
       timeoutMs: opts.config.requestTimeoutMs,
     });
     this.logger = opts.logger;
+    this.manualAuth = Boolean(opts.config.cookie || opts.config.crumb);
     this.session = new CrumbSession({
       fetch: this.fetchImpl,
       ...(opts.logger ? { logger: opts.logger } : {}),
@@ -131,30 +146,34 @@ export class YahooClient {
         json = text ? JSON.parse(text) : undefined;
       } catch {
         if (!res.ok) {
-          throw new YahooFinanceApiError(rateLimitMessage(res.status, text || res.statusText), {
+          const message = text || res.statusText || `HTTP ${res.status}`;
+          throw new YahooFinanceApiError(rateLimitMessage(res.status, message), {
             status: res.status,
           });
         }
         throw new YahooFinanceApiError(`Expected JSON but got: ${text.slice(0, 200)}`);
       }
-      const result = unwrapEnvelope(json, rootKey);
-      if (!res.ok) {
-        throw new YahooFinanceApiError(rateLimitMessage(res.status, res.statusText), {
-          status: res.status,
-        });
-      }
-      return result as T;
+      return unwrapEnvelope(json, rootKey, res) as T;
     };
 
     try {
       return await send();
     } catch (err) {
-      if (opts.needsCrumb && isCrumbError(err)) {
-        this.logger?.warn?.("[yahoo] crumb rejected — refreshing and retrying once");
-        this.session.invalidate();
-        return send();
+      if (!opts.needsCrumb || !isCrumbError(err)) throw err;
+      this.logger?.warn?.("[yahoo] crumb rejected — refreshing and retrying once");
+      this.session.invalidate();
+      try {
+        return await send();
+      } catch (retryErr) {
+        if (this.manualAuth && isCrumbError(retryErr)) {
+          const { message, status, code } = retryErr as YahooFinanceApiError;
+          throw new YahooFinanceApiError(`${MANUAL_AUTH_REJECTED_MESSAGE} (Yahoo: ${message})`, {
+            ...(status ? { status } : {}),
+            ...(code ? { code } : {}),
+          });
+        }
+        throw retryErr;
       }
-      throw err;
     }
   }
 

@@ -7,6 +7,12 @@ export const RATE_LIMIT_MESSAGE =
   "if many tickers are being fetched at once. If every call fails, Yahoo has likely changed " +
   "the browser fingerprint it accepts; upgrade @mgcrea/mcp-yahoo-finance.";
 
+// A supplied cookie/crumb pair is never refreshed, so once Yahoo rejects it
+// every crumb call fails until someone replaces it.
+export const MANUAL_AUTH_REJECTED_MESSAGE =
+  "Yahoo Finance rejected YAHOO_FINANCE_COOKIE / YAHOO_FINANCE_CRUMB. Copy both again from " +
+  "the same browser session, or unset them to let the server handshake on its own.";
+
 export class YahooFinanceApiError extends Error {
   override readonly name: string = "YahooFinanceApiError";
   readonly status: number | undefined;
