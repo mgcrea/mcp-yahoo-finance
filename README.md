@@ -54,12 +54,13 @@ pnpm start
 
 All environment variables are optional — see [`.env.example`](.env.example):
 
-| Variable                                       | Default | Purpose                                              |
-| ---------------------------------------------- | ------- | ---------------------------------------------------- |
-| `YAHOO_FINANCE_DEBUG`                          | –       | Verbose stderr logging.                              |
-| `YAHOO_FINANCE_CONCURRENCY`                    | `4`     | Max in-flight requests to Yahoo (avoid 429s).        |
-| `YAHOO_FINANCE_REQUEST_TIMEOUT_MS`             | `30000` | Per-request timeout, body included.                  |
-| `YAHOO_FINANCE_COOKIE` / `YAHOO_FINANCE_CRUMB` | –       | Skip the automatic handshake with values you supply. |
+| Variable                           | Default | Purpose                                                                                  |
+| ---------------------------------- | ------- | ---------------------------------------------------------------------------------------- |
+| `YAHOO_FINANCE_DEBUG`              | –       | Verbose stderr logging.                                                                  |
+| `YAHOO_FINANCE_CONCURRENCY`        | `4`     | Max in-flight requests to Yahoo (avoid 429s).                                            |
+| `YAHOO_FINANCE_REQUEST_TIMEOUT_MS` | `30000` | Per-request timeout, body included.                                                      |
+| `YAHOO_FINANCE_COOKIE`             | –       | Use this browser cookie instead of the automatic handshake; the crumb is fetched for it. |
+| `YAHOO_FINANCE_CRUMB`              | –       | Rarely needed: a crumb is derived from the cookie, and replaced if Yahoo rejects it.     |
 
 > **HTTP 429.** Yahoo answers 429 for two reasons. One is a burst limit: wait,
 > and keep `YAHOO_FINANCE_CONCURRENCY` low when fetching many tickers. The other

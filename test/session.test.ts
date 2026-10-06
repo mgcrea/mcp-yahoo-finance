@@ -47,6 +47,24 @@ describe("CrumbSession with a supplied cookie", () => {
     const session = new CrumbSession({ cookie: "A3=three", crumb: "c" });
     expect(await session.cookieHeader("https://example.com/")).toBe("");
   });
+
+  it("asks Yahoo for the crumb that goes with it, without warming new cookies", async () => {
+    const { fetch, calls } = fakeYahoo([[/getcrumb/, () => new Response("own-crumb")]]);
+    const session = new CrumbSession({ fetch, cookie: "A3=signed; T=login" });
+    expect(await session.get()).toBe("own-crumb");
+    expect(calls.map((c) => c.url)).toEqual(["https://query1.finance.yahoo.com/v1/test/getcrumb"]);
+    expect(calls[0]!.cookie).toBe("A3=signed; T=login");
+  });
+
+  it("replaces a supplied crumb Yahoo rejected with one derived from the cookie", async () => {
+    const { fetch, calls } = fakeYahoo([[/getcrumb/, () => new Response("own-crumb")]]);
+    const session = new CrumbSession({ fetch, cookie: "A3=signed", crumb: "stale" });
+    expect(await session.get()).toBe("stale");
+    session.invalidate();
+    expect(await session.get()).toBe("own-crumb");
+    // The supplied cookie is the identity: never swap it for an anonymous one.
+    expect(calls.map((c) => c.url)).toEqual(["https://query1.finance.yahoo.com/v1/test/getcrumb"]);
+  });
 });
 
 describe("CrumbSession through the EU consent wall", () => {

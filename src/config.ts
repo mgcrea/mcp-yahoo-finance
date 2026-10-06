@@ -5,7 +5,8 @@ const ConfigSchema = z.object({
   // Cap on in-flight Yahoo requests (handshake included), to stay under the 429 threshold.
   concurrency: z.number().int().positive().max(32).default(4),
   requestTimeoutMs: z.number().int().positive().default(30_000),
-  // Optional manual cookie/crumb override — bypasses the automatic handshake.
+  // Optional browser cookie — replaces the automatic handshake. The crumb is
+  // derived from it unless supplied, and re-derived if Yahoo rejects it.
   cookie: z.string().optional(),
   crumb: z.string().optional(),
 });

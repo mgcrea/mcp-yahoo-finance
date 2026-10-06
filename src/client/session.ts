@@ -12,7 +12,10 @@ export type CrumbSessionOptions = {
   fetch?: typeof fetch;
   logger?: Logger;
   userAgent?: string;
-  /** Skip the automatic handshake and use these values directly. */
+  /**
+   * Use this cookie instead of warming anonymous ones. The crumb is then asked
+   * of Yahoo for that cookie, unless one is supplied too.
+   */
   cookie?: string;
   crumb?: string;
 };
@@ -45,7 +48,7 @@ export class CrumbSession {
   private readonly fetchImpl: typeof fetch;
   private readonly logger: Logger | undefined;
   private readonly userAgent: string;
-  private readonly manualCrumb: string | undefined;
+  private readonly manualCookie: boolean;
   private crumb: string | null = null;
   private inflight: Promise<string> | null = null;
   private cookiesReady = false;
@@ -56,7 +59,7 @@ export class CrumbSession {
     this.fetchImpl = opts.fetch ?? fetch;
     this.logger = opts.logger;
     this.userAgent = opts.userAgent ?? DEFAULT_USER_AGENT;
-    this.manualCrumb = opts.crumb;
+    this.manualCookie = Boolean(opts.cookie);
     if (opts.crumb) this.crumb = opts.crumb;
     if (opts.cookie) {
       // Seed the jar so the very first request already carries the override.
@@ -75,12 +78,14 @@ export class CrumbSession {
     return this.jar.getCookieString(url, { allPaths: true });
   }
 
-  /** Drop the cached crumb so the next {@link get} performs a fresh handshake. */
+  /**
+   * Drop the cached crumb — supplied or not — so the next {@link get} asks Yahoo
+   * for a fresh one. A supplied cookie is the session's identity and is kept;
+   * only anonymous cookies are warmed again.
+   */
   invalidate(): void {
-    if (!this.manualCrumb) {
-      this.crumb = null;
-      this.cookiesReady = false;
-    }
+    this.crumb = null;
+    if (!this.manualCookie) this.cookiesReady = false;
   }
 
   /**

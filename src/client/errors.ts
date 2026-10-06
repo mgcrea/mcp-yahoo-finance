@@ -7,11 +7,11 @@ export const RATE_LIMIT_MESSAGE =
   "if many tickers are being fetched at once. If every call fails, Yahoo has likely changed " +
   "the browser fingerprint it accepts; upgrade @mgcrea/mcp-yahoo-finance.";
 
-// A supplied cookie/crumb pair is never refreshed, so once Yahoo rejects it
-// every crumb call fails until someone replaces it.
+// Thrown once a crumb freshly derived from the supplied cookie was rejected
+// too: the cookie itself is stale (signed out, expired), so only a new one helps.
 export const MANUAL_AUTH_REJECTED_MESSAGE =
-  "Yahoo Finance rejected YAHOO_FINANCE_COOKIE / YAHOO_FINANCE_CRUMB. Copy both again from " +
-  "the same browser session, or unset them to let the server handshake on its own.";
+  "Yahoo Finance rejected YAHOO_FINANCE_COOKIE, even with a fresh crumb. Copy it again from " +
+  "a browser session, or unset it to let the server handshake on its own.";
 
 export class YahooFinanceApiError extends Error {
   override readonly name: string = "YahooFinanceApiError";
@@ -33,7 +33,7 @@ export class YahooCrumbError extends YahooFinanceApiError {
 
   constructor(
     message = "Failed to obtain a Yahoo Finance crumb. Yahoo may have changed its consent flow; " +
-      "set YAHOO_FINANCE_COOKIE and YAHOO_FINANCE_CRUMB to bypass the automatic handshake.",
+      "set YAHOO_FINANCE_COOKIE to bypass the automatic handshake.",
   ) {
     super(message);
   }

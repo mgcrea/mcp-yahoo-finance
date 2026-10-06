@@ -42,7 +42,7 @@ describe("YahooClient on HTTP 401", () => {
     expect(err.code).toBe("Unauthorized");
   });
 
-  it("points at the supplied cookie and crumb when those were rejected", async () => {
+  it("points at the supplied cookie once a fresh crumb is rejected too", async () => {
     const err = await quoteFailure({
       YAHOO_FINANCE_COOKIE: "A3=stale",
       YAHOO_FINANCE_CRUMB: "stale",
@@ -50,6 +50,20 @@ describe("YahooClient on HTTP 401", () => {
     expect(err.message).toContain("YAHOO_FINANCE_COOKIE");
     expect(err.message).toContain("User is unable to access this feature");
     expect(err.status).toBe(401);
+  });
+
+  it("recovers from a stale supplied crumb by deriving one from the supplied cookie", async () => {
+    const fetch = (async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes("getcrumb")) return new Response("own-crumb");
+      if (url.includes("crumb=own-crumb")) {
+        return new Response(JSON.stringify({ quoteResponse: { result: [{ symbol: "AAPL" }] } }));
+      }
+      return unauthorized();
+    }) as typeof globalThis.fetch;
+    const config = loadConfig({ YAHOO_FINANCE_COOKIE: "A3=signed", YAHOO_FINANCE_CRUMB: "stale" });
+    const client = new YahooClient({ config, fetch });
+    expect(await client.quote(["AAPL"])).toEqual([{ symbol: "AAPL" }]);
   });
 
   it("falls back to the status code when the body says nothing", async () => {

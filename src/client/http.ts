@@ -111,7 +111,7 @@ export class YahooClient {
       timeoutMs: opts.config.requestTimeoutMs,
     });
     this.logger = opts.logger;
-    this.manualAuth = Boolean(opts.config.cookie || opts.config.crumb);
+    this.manualAuth = Boolean(opts.config.cookie);
     this.session = new CrumbSession({
       fetch: this.fetchImpl,
       ...(opts.logger ? { logger: opts.logger } : {}),
