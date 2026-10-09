@@ -137,10 +137,10 @@ describe("yahoo_get_portfolio_transactions", () => {
   });
 });
 
-describe("yahoo_add_portfolio_transaction", () => {
-  const saved = (raw: Record<string, unknown>) =>
-    vi.fn().mockResolvedValue({ newTransactionMeta: { id: raw.id }, transactions: [RAW_BUY, raw] });
+const saved = (raw: Record<string, unknown>) =>
+  vi.fn().mockResolvedValue({ newTransactionMeta: { id: raw.id }, transactions: [RAW_BUY, raw] });
 
+describe("yahoo_add_portfolio_transaction", () => {
   it("records a trade on a held symbol, sending Yahoo's YYYYMMDD date", async () => {
     const raw = { ...RAW_BUY, id: "transaction_2", type: "SELL", date: "20261005", quantity: 2 };
     const saveTransaction = saved(raw);

@@ -176,28 +176,30 @@ describe("YahooClient transaction endpoints", () => {
   });
 });
 
-describe("YahooClient transaction endpoints with a signed-out cookie", () => {
-  // What Yahoo answers an account endpoint once the T login has expired.
-  const signedOut = () =>
-    new Response(
-      JSON.stringify({
-        finance: {
-          result: null,
-          error: {
-            code: "Forbidden",
-            description: "Unable to authenticate user against member profile.",
-          },
+// What Yahoo answers an account endpoint once the T login has expired.
+const signedOut = () =>
+  new Response(
+    JSON.stringify({
+      finance: {
+        result: null,
+        error: {
+          code: "Forbidden",
+          description: "Unable to authenticate user against member profile.",
         },
-      }),
-      { status: 403 },
-    );
-  const client = () => {
-    const fetch = (async (input: string | URL | Request) =>
-      new URL(String(input)).pathname === "/v1/test/getcrumb"
-        ? new Response("c1")
-        : signedOut()) as typeof globalThis.fetch;
-    return new YahooClient({ config: loadConfig(SIGNED_IN), fetch });
-  };
+      },
+    }),
+    { status: 403 },
+  );
+
+const signedOutClient = () => {
+  const fetch = (async (input: string | URL | Request) =>
+    new URL(String(input)).pathname === "/v1/test/getcrumb"
+      ? new Response("c1")
+      : signedOut()) as typeof globalThis.fetch;
+  return new YahooClient({ config: loadConfig(SIGNED_IN), fetch });
+};
+
+describe("YahooClient transaction endpoints with a signed-out cookie", () => {
   const trade = {
     pfId: "p_8",
     positionId: "pos_0",
@@ -210,11 +212,11 @@ describe("YahooClient transaction endpoints with a signed-out cookie", () => {
   };
 
   it.each([
-    ["transactions", () => client().transactions("p_8", "pos_0")],
-    ["saveTransaction", () => client().saveTransaction(trade)],
+    ["transactions", () => signedOutClient().transactions("p_8", "pos_0")],
+    ["saveTransaction", () => signedOutClient().saveTransaction(trade)],
     [
       "deleteTransaction",
-      () => client().deleteTransaction({ pfId: "p_8", positionId: "pos_0", id: "t" }),
+      () => signedOutClient().deleteTransaction({ pfId: "p_8", positionId: "pos_0", id: "t" }),
     ],
   ])("%s says the login expired, as the portfolio calls do", async (_name, call) => {
     await expect(call()).rejects.toBeInstanceOf(YahooCookieRejectedError);
