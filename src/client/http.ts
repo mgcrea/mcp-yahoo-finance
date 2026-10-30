@@ -214,6 +214,7 @@ export class YahooClient {
       ...(opts.logger ? { logger: opts.logger } : {}),
       ...(opts.config.cookie ? { cookie: opts.config.cookie } : {}),
       ...(opts.config.crumb ? { crumb: opts.config.crumb } : {}),
+      ...(opts.config.cookieFile ? { cookieFile: opts.config.cookieFile } : {}),
     });
   }
 
@@ -241,6 +242,7 @@ export class YahooClient {
         },
         ...(hasBody ? { body: JSON.stringify(opts.body) } : {}),
       });
+      await this.session.absorb(res, url);
       const text = await res.text();
       let json: unknown;
       try {

@@ -1,3 +1,6 @@
+import { homedir } from "node:os";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { loadConfig } from "#/config";
@@ -12,6 +15,7 @@ describe("loadConfig", () => {
       cookie: undefined,
       crumb: undefined,
       allowWrites: false,
+      cookieFile: undefined,
     });
   });
 
@@ -48,5 +52,33 @@ describe("loadConfig", () => {
     ["", false],
   ])("reads YAHOO_FINANCE_ALLOW_WRITES=%j as %s", (value, expected) => {
     expect(loadConfig({ YAHOO_FINANCE_ALLOW_WRITES: value }).allowWrites).toBe(expected);
+  });
+
+  describe("cookie file", () => {
+    const COOKIE = "A3=a; T=login";
+
+    it("is the one named, when a cookie is supplied", () => {
+      const env = { YAHOO_FINANCE_COOKIE: COOKIE, YAHOO_FINANCE_COOKIE_FILE: "/state/c.json" };
+      expect(loadConfig(env).cookieFile).toBe("/state/c.json");
+    });
+
+    // Bastion points XDG_CONFIG_HOME at the profile's own folder, so the default
+    // keeps two profiles' logins apart without anyone configuring a path.
+    it("defaults beside XDG_CONFIG_HOME, so each Bastion profile gets its own", () => {
+      const env = { YAHOO_FINANCE_COOKIE: COOKIE, XDG_CONFIG_HOME: "/profiles/me" };
+      expect(loadConfig(env).cookieFile).toBe("/profiles/me/mcp-yahoo-finance/cookies.json");
+    });
+
+    it("defaults under ~/.config without XDG_CONFIG_HOME, and for a blank name", () => {
+      const expected = join(homedir(), ".config", "mcp-yahoo-finance", "cookies.json");
+      expect(loadConfig({ YAHOO_FINANCE_COOKIE: COOKIE }).cookieFile).toBe(expected);
+      const blank = { YAHOO_FINANCE_COOKIE: COOKIE, YAHOO_FINANCE_COOKIE_FILE: "  " };
+      expect(loadConfig(blank).cookieFile).toBe(expected);
+    });
+
+    it("is unset without a cookie, since there is no session to keep", () => {
+      expect(loadConfig({ XDG_CONFIG_HOME: "/profiles/me" }).cookieFile).toBeUndefined();
+      expect(loadConfig({ YAHOO_FINANCE_COOKIE_FILE: "/state/c.json" }).cookieFile).toBeUndefined();
+    });
   });
 });

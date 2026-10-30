@@ -62,6 +62,9 @@ position deletes them. So removing such a position, or deleting a portfolio that
 holds any, is refused unless the call passes `delete_history: true`, and the
 reply lists what went.
 
+A copied cookie is a snapshot of a session the browser keeps renewing, so the server
+saves whatever cookies Yahoo sends back (see `YAHOO_FINANCE_COOKIE_FILE`) and starts
+from that next time; a cookie you copy again always replaces the saved one.
 Yahoo does not say when a login cookie expires. Once it does, the account tools
 fail with an error naming `YAHOO_FINANCE_COOKIE`, and `yahoo_auth_status` (registered
 whenever a cookie is set) checks it live: it lists the account and reports
@@ -84,14 +87,15 @@ whenever a cookie is set) checks it live: it lists the account and reports
 
 All environment variables are optional — see [`.env.example`](.env.example):
 
-| Variable                           | Default | Purpose                                                                                          |
-| ---------------------------------- | ------- | ------------------------------------------------------------------------------------------------ |
-| `YAHOO_FINANCE_DEBUG`              | –       | Verbose stderr logging.                                                                          |
-| `YAHOO_FINANCE_CONCURRENCY`        | `4`     | Max in-flight requests to Yahoo (avoid 429s).                                                    |
-| `YAHOO_FINANCE_REQUEST_TIMEOUT_MS` | `30000` | Per-request timeout, body included.                                                              |
-| `YAHOO_FINANCE_COOKIE`             | –       | Use this browser cookie instead of the automatic handshake; the crumb is fetched for it.         |
-| `YAHOO_FINANCE_CRUMB`              | –       | Rarely needed: a crumb is derived from the cookie, and replaced if Yahoo rejects it.             |
-| `YAHOO_FINANCE_ALLOW_WRITES`       | –       | `1` registers the watchlist and portfolio tools that change the account (signed-in cookie only). |
+| Variable                           | Default | Purpose                                                                                                                                    |
+| ---------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `YAHOO_FINANCE_DEBUG`              | –       | Verbose stderr logging.                                                                                                                    |
+| `YAHOO_FINANCE_CONCURRENCY`        | `4`     | Max in-flight requests to Yahoo (avoid 429s).                                                                                              |
+| `YAHOO_FINANCE_REQUEST_TIMEOUT_MS` | `30000` | Per-request timeout, body included.                                                                                                        |
+| `YAHOO_FINANCE_COOKIE`             | –       | Use this browser cookie instead of the automatic handshake; the crumb is fetched for it.                                                   |
+| `YAHOO_FINANCE_COOKIE_FILE`        | see →   | Where the cookie's renewed session is kept (mode 0600). Default `$XDG_CONFIG_HOME/mcp-yahoo-finance/cookies.json`, else under `~/.config`. |
+| `YAHOO_FINANCE_CRUMB`              | –       | Rarely needed: a crumb is derived from the cookie, and replaced if Yahoo rejects it.                                                       |
+| `YAHOO_FINANCE_ALLOW_WRITES`       | –       | `1` registers the watchlist and portfolio tools that change the account (signed-in cookie only).                                           |
 
 > **HTTP 429.** Yahoo answers 429 for two reasons. One is a burst limit: wait,
 > and keep `YAHOO_FINANCE_CONCURRENCY` low when fetching many tickers. The other

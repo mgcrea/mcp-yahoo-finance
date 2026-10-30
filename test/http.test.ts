@@ -1,3 +1,7 @@
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { YahooFinanceApiError } from "#/client/errors";
@@ -76,5 +80,31 @@ describe("YahooClient on HTTP 401", () => {
       .chart("AAPL", { period1: 0, period2: 1, interval: "1d" })
       .catch((e: unknown) => e);
     expect((err as Error).message).toBe("HTTP 503");
+  });
+});
+
+describe("YahooClient with a cookie file", () => {
+  it("saves the login cookie Yahoo renews on an ordinary API response", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "yahoo-cookie-"));
+    try {
+      const cookieFile = join(dir, "cookies.json");
+      const fetch = (async (input: string | URL | Request) => {
+        if (String(input).includes("getcrumb")) return new Response("c1");
+        const headers = new Headers();
+        headers.append("set-cookie", "T=renewed-login; Domain=.yahoo.com; Path=/; Secure");
+        return new Response(JSON.stringify({ quoteResponse: { result: [{ symbol: "AAPL" }] } }), {
+          headers,
+        });
+      }) as typeof globalThis.fetch;
+      const config = loadConfig({
+        YAHOO_FINANCE_COOKIE: "A3=a; T=old-login",
+        YAHOO_FINANCE_COOKIE_FILE: cookieFile,
+      });
+
+      await new YahooClient({ config, fetch }).quote(["AAPL"]);
+      expect(readFileSync(cookieFile, "utf8")).toContain("renewed-login");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

@@ -1,4 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { YahooCrumbError } from "#/client/errors";
 import { CrumbSession } from "#/client/session";
@@ -120,5 +124,90 @@ describe("CrumbSession through the EU consent wall", () => {
     const err = await new CrumbSession({ fetch }).get().catch((e: unknown) => e);
     expect(err).toBeInstanceOf(YahooCrumbError);
     expect((err as Error).message).toContain("https://login.yahoo.com/");
+  });
+});
+
+describe("CrumbSession with a cookie file", () => {
+  const dirs: string[] = [];
+  const tempFile = () => {
+    const dir = mkdtempSync(join(tmpdir(), "yahoo-cookie-"));
+    dirs.push(dir);
+    return join(dir, "cookies.json");
+  };
+  afterEach(() => {
+    for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true });
+  });
+
+  const API = "https://query1.finance.yahoo.com/v7/finance/quote";
+  const renewal = (...cookies: string[]) => {
+    const headers = new Headers();
+    for (const c of cookies) headers.append("set-cookie", c);
+    return new Response("{}", { headers });
+  };
+
+  it("keeps a cookie Yahoo renews on an API response, in memory and in the file", async () => {
+    const cookieFile = tempFile();
+    const session = new CrumbSession({ cookie: "A3=a; T=old", cookieFile });
+    await session.absorb(renewal("T=new; Domain=.yahoo.com; Path=/; Secure"), API);
+
+    expect(await session.cookieHeader(API)).toBe("A3=a; T=new");
+    // The file holds a session: nobody but the owner reads it.
+    expect(statSync(cookieFile).mode & 0o777).toBe(0o600);
+  });
+
+  it("starts from the renewed cookie when the server restarts", async () => {
+    const cookieFile = tempFile();
+    const first = new CrumbSession({ cookie: "A3=a; T=old", cookieFile });
+    await first.absorb(renewal("T=new; Domain=.yahoo.com; Path=/"), API);
+
+    const restarted = new CrumbSession({ cookie: "A3=a; T=old", cookieFile });
+    expect(await restarted.cookieHeader(API)).toBe("A3=a; T=new");
+  });
+
+  it("starts over from a cookie copied again, whatever the file holds", async () => {
+    const cookieFile = tempFile();
+    const first = new CrumbSession({ cookie: "A3=a; T=old", cookieFile });
+    await first.absorb(renewal("T=new; Domain=.yahoo.com; Path=/"), API);
+
+    const recopied = new CrumbSession({ cookie: "A3=b; T=fresh", cookieFile });
+    expect(await recopied.cookieHeader(API)).toBe("A3=b; T=fresh");
+  });
+
+  it("writes no file while Yahoo renews nothing", async () => {
+    const cookieFile = tempFile();
+    const session = new CrumbSession({ cookie: "A3=a; T=old", cookieFile });
+    await session.absorb(renewal(), API);
+    await session.absorb(renewal("T=old; Domain=.yahoo.com; Path=/"), API);
+    expect(existsSync(cookieFile)).toBe(false);
+  });
+
+  it("falls back to the supplied cookie when the file is unreadable", async () => {
+    const cookieFile = tempFile();
+    writeFileSync(cookieFile, "{ not json");
+    const session = new CrumbSession({ cookie: "A3=a; T=old", cookieFile });
+    expect(await session.cookieHeader(API)).toBe("A3=a; T=old");
+  });
+
+  it("keeps working, and says so, when the file cannot be written", async () => {
+    const dir = tempFile();
+    writeFileSync(dir, "a file where a folder should be");
+    const warn = vi.fn();
+    const session = new CrumbSession({
+      cookie: "A3=a; T=old",
+      cookieFile: join(dir, "cookies.json"),
+      logger: { warn },
+    });
+    await session.absorb(renewal("T=new; Domain=.yahoo.com; Path=/"), API);
+
+    expect(await session.cookieHeader(API)).toBe("A3=a; T=new");
+    expect(warn).toHaveBeenCalledOnce();
+    expect(String(warn.mock.calls[0]![0])).toContain("cookie file");
+  });
+
+  it("replaces the old login in the file rather than keeping both", async () => {
+    const cookieFile = tempFile();
+    const session = new CrumbSession({ cookie: "A3=a; T=secret-login", cookieFile });
+    await session.absorb(renewal("T=secret-renewed; Domain=.yahoo.com; Path=/"), API);
+    expect(readFileSync(cookieFile, "utf8")).not.toContain("secret-login");
   });
 });

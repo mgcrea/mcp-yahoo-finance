@@ -1,3 +1,7 @@
+import { createHash } from "node:crypto";
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
+
 import { Cookie, CookieJar } from "tough-cookie";
 
 import { RATE_LIMIT_MESSAGE, YahooCrumbError } from "#/client/errors";
@@ -18,6 +22,12 @@ export type CrumbSessionOptions = {
    */
   cookie?: string;
   crumb?: string;
+  /**
+   * Where to keep the supplied cookie's session between runs. Yahoo renews the
+   * login cookies as it goes; a copy pasted from a browser goes stale unless
+   * what Yahoo sends back is kept. Ignored without a `cookie`.
+   */
+  cookieFile?: string;
 };
 
 // A realistic desktop browser User-Agent — Yahoo gates the cookie/crumb
@@ -28,6 +38,29 @@ export const DEFAULT_USER_AGENT =
 
 const CRUMB_SEED_URL = "https://finance.yahoo.com/quote/AAPL";
 const GET_CRUMB_URL = "https://query1.finance.yahoo.com/v1/test/getcrumb";
+
+const fingerprint = (cookie: string): string => createHash("sha256").update(cookie).digest("hex");
+
+const cookieFileFormat = 1;
+
+/** The jar saved for exactly this supplied cookie, or null (missing, unreadable, or for another cookie). */
+const loadJar = (path: string, source: string, logger: Logger | undefined): CookieJar | null => {
+  let text: string;
+  try {
+    text = readFileSync(path, "utf8");
+  } catch {
+    return null;
+  }
+  try {
+    const saved = JSON.parse(text) as { version?: number; source?: string; jar?: unknown };
+    // A different cookie was supplied: it was copied again, so it wins.
+    if (saved.version !== cookieFileFormat || saved.source !== source || !saved.jar) return null;
+    return CookieJar.deserializeSync(saved.jar as never);
+  } catch {
+    logger?.warn?.(`[yahoo] ignoring the unreadable cookie file ${path}`);
+    return null;
+  }
+};
 
 const parseHtmlEntities = (str: string): string =>
   str.replace(/&#x([0-9A-Fa-f]{1,3});/gi, (_, num: string) =>
@@ -49,24 +82,33 @@ export class CrumbSession {
   private readonly logger: Logger | undefined;
   private readonly userAgent: string;
   private readonly manualCookie: boolean;
+  private readonly cookieFile: string | undefined;
+  private readonly source: string | undefined;
   private crumb: string | null = null;
   private inflight: Promise<string> | null = null;
   private cookiesReady = false;
   private cookieInflight: Promise<void> | null = null;
 
   constructor(opts: CrumbSessionOptions = {}) {
-    this.jar = new CookieJar();
     this.fetchImpl = opts.fetch ?? fetch;
     this.logger = opts.logger;
     this.userAgent = opts.userAgent ?? DEFAULT_USER_AGENT;
     this.manualCookie = Boolean(opts.cookie);
+    this.cookieFile = opts.cookie ? opts.cookieFile : undefined;
+    this.source = opts.cookie ? fingerprint(opts.cookie) : undefined;
+    const restored =
+      this.cookieFile && this.source ? loadJar(this.cookieFile, this.source, this.logger) : null;
+    this.jar = restored ?? new CookieJar();
     if (opts.crumb) this.crumb = opts.crumb;
     if (opts.cookie) {
-      // Seed the jar so the very first request already carries the override.
+      // Seed the jar so the very first request already carries the override,
+      // unless a saved session for this very cookie already holds its renewals.
       // Scope it to all of yahoo.com: it is copied from a finance.yahoo.com tab,
       // but the API answers on query1/query2, which a host-only cookie misses.
-      for (const part of opts.cookie.split(/;\s*/)) {
-        if (part) this.jar.setCookieSync(`${part}; Domain=yahoo.com; Path=/`, CRUMB_SEED_URL);
+      if (!restored) {
+        for (const part of opts.cookie.split(/;\s*/)) {
+          if (part) this.jar.setCookieSync(`${part}; Domain=yahoo.com; Path=/`, CRUMB_SEED_URL);
+        }
       }
       // Trust the supplied cookie — don't run the automatic warm-up.
       this.cookiesReady = true;
@@ -125,6 +167,48 @@ export class CrumbSession {
         });
     }
     return this.inflight;
+  }
+
+  /**
+   * Keep whatever cookies Yahoo sent back on a response, and save the session
+   * when that changed it. Yahoo renews its login cookies on ordinary calls, so
+   * this is what keeps a copied cookie alive.
+   */
+  async absorb(res: Response, url: string): Promise<void> {
+    const before = this.fingerprintJar();
+    await this.storeSetCookies(res, url);
+    if (this.cookieFile && this.fingerprintJar() !== before) this.persist(this.cookieFile);
+  }
+
+  // Name, value and scope only: re-sending the same cookie is not a change.
+  private fingerprintJar(): string {
+    const { cookies } = this.jar.serializeSync() ?? { cookies: [] };
+    return JSON.stringify(
+      cookies.map((c) => [c.key, c.value, c.domain, c.path]).toSorted((a, b) => (a < b ? -1 : 1)),
+    );
+  }
+
+  private persist(path: string): void {
+    const tmp = `${path}.${process.pid}.tmp`;
+    try {
+      mkdirSync(dirname(path), { recursive: true });
+      const saved = {
+        version: cookieFileFormat,
+        source: this.source,
+        jar: this.jar.serializeSync(),
+      };
+      // A live login: readable by its owner only, and never half-written.
+      writeFileSync(tmp, JSON.stringify(saved), { mode: 0o600 });
+      renameSync(tmp, path);
+    } catch (err) {
+      try {
+        rmSync(tmp, { force: true });
+      } catch {
+        // Nothing to clean up if the folder itself was the problem.
+      }
+      const reason = err instanceof Error ? err.message : String(err);
+      this.logger?.warn?.(`[yahoo] could not write the cookie file ${path}: ${reason}`);
+    }
   }
 
   private async storeSetCookies(res: Response, url: string): Promise<void> {
