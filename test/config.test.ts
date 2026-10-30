@@ -1,7 +1,8 @@
-import { homedir } from "node:os";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { loadConfig } from "#/config";
 
@@ -52,6 +53,60 @@ describe("loadConfig", () => {
     ["", false],
   ])("reads YAHOO_FINANCE_ALLOW_WRITES=%j as %s", (value, expected) => {
     expect(loadConfig({ YAHOO_FINANCE_ALLOW_WRITES: value }).allowWrites).toBe(expected);
+  });
+
+  // A file holding one Cookie header value, as apple_safari_cookies saves it.
+  describe("cookie import file", () => {
+    const FAKE = "A3=fake-a; T=fake-t; Y=fake-y";
+    let dir: string;
+    beforeEach(() => {
+      dir = mkdtempSync(join(tmpdir(), "yahoo-import-"));
+    });
+    afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+    const write = (text: string): string => {
+      const path = join(dir, "cookie.txt");
+      writeFileSync(path, text, { mode: 0o600 });
+      return path;
+    };
+
+    it("is used exactly as YAHOO_FINANCE_COOKIE is, trimmed", () => {
+      const env = { YAHOO_FINANCE_COOKIE_IMPORT_FILE: write(`  ${FAKE}\n`) };
+      const config = loadConfig({ ...env, XDG_CONFIG_HOME: "/profiles/me" });
+      expect(config.cookie).toBe(FAKE);
+      expect(config.cookieFile).toBe("/profiles/me/mcp-yahoo-finance/cookies.json");
+    });
+
+    it("refuses to start beside YAHOO_FINANCE_COOKIE, saying which to drop", () => {
+      const env = { YAHOO_FINANCE_COOKIE: FAKE, YAHOO_FINANCE_COOKIE_IMPORT_FILE: write(FAKE) };
+      expect(() => loadConfig(env)).toThrow(
+        /YAHOO_FINANCE_COOKIE and YAHOO_FINANCE_COOKIE_IMPORT_FILE.*Drop one/,
+      );
+    });
+
+    it("names the setting and the path when the file is missing", () => {
+      const path = join(dir, "absent.txt");
+      expect(() => loadConfig({ YAHOO_FINANCE_COOKIE_IMPORT_FILE: path })).toThrow(
+        `YAHOO_FINANCE_COOKIE_IMPORT_FILE: cannot read ${path}`,
+      );
+    });
+
+    it("names the setting and the path when the file is empty, never its content", () => {
+      const path = write("  \n");
+      expect(() => loadConfig({ YAHOO_FINANCE_COOKIE_IMPORT_FILE: path })).toThrow(
+        `YAHOO_FINANCE_COOKIE_IMPORT_FILE: ${path} is empty`,
+      );
+    });
+
+    it("keeps the cookie out of the error when the path is not a file", () => {
+      expect(() => loadConfig({ YAHOO_FINANCE_COOKIE_IMPORT_FILE: dir })).toThrow(
+        `YAHOO_FINANCE_COOKIE_IMPORT_FILE: cannot read ${dir}`,
+      );
+    });
+
+    it("ignores a blank setting", () => {
+      expect(loadConfig({ YAHOO_FINANCE_COOKIE_IMPORT_FILE: "  " }).cookie).toBeUndefined();
+    });
   });
 
   describe("cookie file", () => {
